@@ -1,190 +1,394 @@
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import * as Google from 'expo-auth-session/providers/google';
+import { useOAuth, useSignIn } from '@clerk/clerk-expo';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import CustomAlert from '../components/CustomAlert';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
+    const { signIn, setActive, isLoaded } = useSignIn();
     const router = useRouter();
-    const colorScheme = useColorScheme();
-    const theme = Colors[colorScheme ?? 'light'];
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        // Client IDs should be added here
-        androidClientId: 'YOUR_ANDROID_CLIENT_ID',
-        iosClientId: 'YOUR_IOS_CLIENT_ID',
-        webClientId: 'YOUR_WEB_CLIENT_ID',
+    const [rememberMe, setRememberMe] = useState(false);
+    const [alertConfig, setAlertConfig] = useState<{ visible: boolean; title: string; message: string }>({
+        visible: false,
+        title: '',
+        message: '',
     });
 
-    useEffect(() => {
-        if (response?.type === 'success') {
-            const { authentication } = response;
-            // Handle successful Google login here
-            // console.log("Google Auth Success", authentication);
-            Alert.alert('Success', 'Google Sign-In Successful (Mock)');
-            // Navigate to dashboard or home
-        }
-    }, [response]);
+    const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
-    const handleEmailLogin = () => {
+    useEffect(() => {
+        async function loadSavedEmail() {
+            try {
+                const savedEmail = await SecureStore.getItemAsync('saved_email');
+                if (savedEmail) {
+                    setEmail(savedEmail);
+                    setRememberMe(true);
+                }
+            } catch (error) {
+                console.log('Error loading saved email:', error);
+            }
+        }
+        loadSavedEmail();
+    }, []);
+
+    const handleEmailLogin = async () => {
+        if (!isLoaded) return;
         if (!email || !password) {
-            Alert.alert('Error', 'Please enter both email and password');
+            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter both email and password' });
             return;
         }
         setLoading(true);
-        // Mock login delay
-        setTimeout(() => {
+        try {
+            const signInAttempt = await signIn.create({
+                identifier: email,
+                password,
+            });
+
+            if (signInAttempt.status === 'complete') {
+                await setActive({ session: signInAttempt.createdSessionId });
+
+                if (rememberMe) {
+                    await SecureStore.setItemAsync('saved_email', email);
+                } else {
+                    await SecureStore.deleteItemAsync('saved_email');
+                }
+
+                // @ts-ignore
+                router.replace('/dashboard');
+            } else {
+                console.error(JSON.stringify(signInAttempt, null, 2));
+                setAlertConfig({ visible: true, title: 'Error', message: 'Login failed. Please check your credentials.' });
+            }
+        } catch (err: any) {
+            console.error(JSON.stringify(err, null, 2));
+            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Login failed' });
+        } finally {
             setLoading(false);
-            Alert.alert('Success', `Logged in as ${email}`);
-            // router.replace('/home'); // Verify route exists later
-        }, 1500);
+        }
     };
 
+    const handleGoogleLogin = useCallback(async () => {
+        try {
+            const { createdSessionId, signIn, signUp, setActive } = await startOAuthFlow({
+                redirectUrl: Linking.createURL('/dashboard', { scheme: 'budgetbuddy' }),
+            });
+
+            if (createdSessionId) {
+                setActive!({ session: createdSessionId });
+            }
+        } catch (err) {
+            console.error('OAuth error', err);
+        }
+    }, []);
+
+    const goToSignup = () => {
+        router.push('/signup');
+    };
+
+    const goToForgotPassword = () => {
+        router.push('/forgot-password');
+    }
+
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>Budget Buddy</Text>
-                <Text style={[styles.subtitle, { color: theme.icon }]}>Manage your finances with ease</Text>
-            </View>
-
-            <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                    <Text style={[styles.label, { color: theme.text }]}>Email</Text>
-                    <TextInput
-                        style={[styles.input, { color: theme.text, borderColor: theme.icon }]}
-                        placeholder="john@example.com"
-                        placeholderTextColor={theme.icon}
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                    />
-                </View>
-
-                <View style={styles.inputContainer}>
-                    <Text style={[styles.label, { color: theme.text }]}>Password</Text>
-                    <TextInput
-                        style={[styles.input, { color: theme.text, borderColor: theme.icon }]}
-                        placeholder="********"
-                        placeholderTextColor={theme.icon}
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-                </View>
-
-                <TouchableOpacity
-                    style={[styles.button, { backgroundColor: theme.tint }]}
-                    onPress={handleEmailLogin}
-                    disabled={loading}
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardAvoidingView}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                <Animated.View
+                    entering={FadeInDown.duration(600).springify()}
+                    style={styles.formContainer}
                 >
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={styles.buttonText}>Log In</Text>
-                    )}
-                </TouchableOpacity>
+                    <Text style={styles.title}>Sign In</Text>
 
-                <View style={styles.divider}>
-                    <View style={[styles.line, { backgroundColor: theme.icon }]} />
-                    <Text style={[styles.dividerText, { color: theme.icon }]}>OR</Text>
-                    <View style={[styles.line, { backgroundColor: theme.icon }]} />
-                </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Email</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="serena88@gmail.com"
+                            placeholderTextColor="#666"
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                        />
+                    </View>
 
-                <TouchableOpacity
-                    style={[styles.googleButton, { borderColor: theme.icon }]}
-                    onPress={() => promptAsync()}
-                    disabled={!request}
-                >
-                    {/* Using a text placeholder for the icon for now */}
-                    <Text style={[styles.googleButtonText, { color: theme.text }]}>Sign in with Google</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Password</Text>
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="*************"
+                                placeholderTextColor="#666"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                            />
+                            <TouchableOpacity
+                                style={styles.eyeIcon}
+                                onPress={() => setShowPassword(!showPassword)}
+                            >
+                                <Ionicons
+                                    name={showPassword ? "eye-off" : "eye"}
+                                    size={20}
+                                    color="#666"
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <View style={styles.optionsRow}>
+                        <TouchableOpacity
+                            style={styles.rememberMeContainer}
+                            onPress={() => setRememberMe(!rememberMe)}
+                        >
+                            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                                {rememberMe && <Ionicons name="checkmark" size={12} color="#000" />}
+                            </View>
+                            <Text style={styles.rememberMeText}>Remember me</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={goToForgotPassword}>
+                            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                        onPress={handleEmailLogin}
+                        disabled={loading}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={['#00E0FF', '#00FFA3']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.button}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color="#000" />
+                            ) : (
+                                <Text style={styles.buttonText}>Sign In</Text>
+                            )}
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    <View style={styles.dividerContainer}>
+                        <View style={styles.line} />
+                        <Text style={styles.dividerText}>Or Sign In with</Text>
+                        <View style={styles.line} />
+                    </View>
+
+                    <View style={styles.socialRow}>
+                        <TouchableOpacity
+                            style={[styles.socialButton, { backgroundColor: '#FFFFFF', borderWidth: 0 }]}
+                            onPress={handleGoogleLogin}
+                            activeOpacity={0.9}
+                        >
+                            <Ionicons name="logo-google" size={20} color="#000" />
+                            <Text style={[styles.socialButtonText, { color: '#000', marginLeft: 8 }]}>Sign In with Google</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>Don't have an account? </Text>
+                        <TouchableOpacity onPress={goToSignup}>
+                            <Text style={styles.signupText}>Sign Up</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </Animated.View>
+            </ScrollView >
+            <CustomAlert
+                visible={alertConfig.visible}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
+            />
+        </KeyboardAvoidingView >
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    keyboardAvoidingView: {
         flex: 1,
-        padding: 24,
-        justifyContent: 'center',
     },
-    header: {
-        marginBottom: 48,
-        alignItems: 'center',
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        padding: 24,
+    },
+    formContainer: {
+        width: '100%',
+        backgroundColor: '#1C1C1E',
+        borderRadius: 24,
+        padding: 24,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 8,
     },
     title: {
         fontSize: 32,
         fontWeight: 'bold',
-        marginBottom: 8,
+        color: '#fff',
+        marginBottom: 32,
     },
-    subtitle: {
-        fontSize: 16,
-    },
-    form: {
-        gap: 16,
-    },
-    inputContainer: {
-        marginBottom: 16,
+    inputGroup: {
+        marginBottom: 20,
     },
     label: {
-        fontSize: 14,
+        color: '#ccc',
         marginBottom: 8,
-        fontWeight: '500',
+        fontSize: 14,
     },
     input: {
-        height: 48,
-        borderWidth: 1,
-        borderRadius: 8,
+        backgroundColor: '#3A3A3C',
+        borderRadius: 12,
+        height: 52,
         paddingHorizontal: 16,
-        fontSize: 16,
-    },
-    button: {
-        height: 48,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 8,
-    },
-    buttonText: {
         color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
+        borderWidth: 1,
+        borderColor: '#333',
     },
-    divider: {
+    passwordContainer: {
+        backgroundColor: '#3A3A3C',
+        borderRadius: 12,
+        height: 52,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: '#333',
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 24,
+    },
+    passwordInput: {
+        flex: 1,
+        height: '100%',
+        color: '#fff',
+    },
+    eyeIcon: {
+        padding: 4,
+    },
+    optionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 32,
+    },
+    rememberMeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    checkbox: {
+        width: 20,
+        height: 20,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderColor: '#00E0FF',
+        marginRight: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    checkboxChecked: {
+        backgroundColor: '#00E0FF',
+    },
+    rememberMeText: {
+        color: '#ccc',
+        fontSize: 14,
+    },
+    forgotPasswordText: {
+        color: '#00E0FF',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    button: {
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 32,
+    },
+    buttonText: {
+        color: '#000',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 32,
     },
     line: {
         flex: 1,
         height: 1,
-        opacity: 0.2,
+        backgroundColor: '#333',
     },
     dividerText: {
+        color: '#ccc',
         marginHorizontal: 16,
         fontSize: 14,
     },
-    googleButton: {
-        height: 48,
-        borderRadius: 8,
-        borderWidth: 1,
+    socialRow: {
+        flexDirection: 'row',
+        gap: 16,
+        marginBottom: 48,
+    },
+    socialButton: {
+        flex: 1,
+        height: 52,
+        backgroundColor: '#1C1C1E',
+        borderRadius: 12,
+        flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        flexDirection: 'row',
-        gap: 12,
+        gap: 8,
     },
-    googleButtonText: {
-        fontSize: 16,
+    socialButtonText: {
+        color: '#fff',
         fontWeight: '600',
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
+    footerText: {
+        color: '#ccc',
+        fontSize: 14,
+    },
+    signupText: {
+        color: '#00E0FF',
+        fontWeight: 'bold',
+        fontSize: 14,
     },
 });

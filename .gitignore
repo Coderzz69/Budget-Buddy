@@ -47,3 +47,5 @@ vite.config.ts.timestamp-*
 ios/Pods/
 android/.gradle/
 android/app/build/
+
+.env
