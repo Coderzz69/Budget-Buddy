@@ -38,6 +38,12 @@ yarn-error.*
 
 app-example
 
-# generated native folders
-/ios
-/android
+# Vite logs files
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+.expo/
+.expo-shared/
+ios/Pods/
+android/.gradle/
+android/app/build/
