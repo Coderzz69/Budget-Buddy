@@ -58,10 +58,9 @@ export default function CustomAlert({ visible, title, message, onClose, buttons 
                                         styles.button,
                                         btn.style === 'cancel' ? styles.cancelButton : styles.defaultButton
                                     ]}>
-                                        <Text style={[
-                                            styles.buttonText,
+                                        <Text style={
                                             btn.style === 'cancel' ? styles.cancelButtonText : styles.defaultButtonText
-                                        ]}>
+                                        }>
                                             {btn.text}
                                         </Text>
                                     </View>
