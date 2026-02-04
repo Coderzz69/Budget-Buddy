@@ -7,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//////////////////////
+// ENUMS
+//////////////////////
+
 enum AccountType {
   cash
   bank
@@ -20,6 +24,15 @@ enum TransactionType {
   transfer
 }
 
+enum SplitType {
+  equal
+  exact
+}
+
+//////////////////////
+// CORE MODELS
+//////////////////////
+
 model User {
   /// Clerk user ID
   id        String   @id
@@ -27,12 +40,19 @@ model User {
   name      String?
   currency  String   @default("INR")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
   accounts     Account[]
   categories   Category[]
   transactions Transaction[]
   budgets      Budget[]
+
+  // Splitwise
+  ownedGroups  Group[]        @relation("GroupOwner")
+  groupMembers GroupMember[]
+  paidExpenses GroupExpense[] @relation("PaidBy")
+  splits       ExpenseSplit[]
+  sentSettles  Settlement[]   @relation("FromUser")
+  recvSettles  Settlement[]   @relation("ToUser")
 }
 
 model Account {
@@ -42,7 +62,6 @@ model Account {
   type      AccountType
   balance   Decimal     @default(0)
   createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions Transaction[]
@@ -66,18 +85,18 @@ model Category {
 }
 
 model Transaction {
-  id          String           @id @default(uuid())
-  userId      String
-  accountId   String
-  categoryId  String?
-  type        TransactionType
-  amount      Decimal
-  note        String?
-  occurredAt  DateTime
-  createdAt  DateTime         @default(now())
+  id         String          @id @default(uuid())
+  userId     String
+  accountId  String
+  categoryId String?
+  type       TransactionType
+  amount     Decimal
+  note       String?
+  occurredAt DateTime
+  createdAt  DateTime        @default(now())
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account  Account  @relation(fields: [accountId], references: [id])
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id])
   category Category? @relation(fields: [categoryId], references: [id])
 
   @@index([userId, occurredAt])
@@ -90,10 +109,81 @@ model Budget {
   categoryId String
   month      DateTime
   limit      Decimal
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id])
 
   @@unique([userId, categoryId, month])
+}
+
+//////////////////////
+// SPLITWISE MODELS
+//////////////////////
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  owner    User           @relation("GroupOwner", fields: [ownerId], references: [id])
+  members  GroupMember[]
+  expenses GroupExpense[]
+  settles  Settlement[]
+}
+
+model GroupMember {
+  id      String @id @default(uuid())
+  groupId String
+  userId  String
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model GroupExpense {
+  id         String    @id @default(uuid())
+  groupId    String
+  paidById   String
+  title      String
+  amount     Decimal
+  splitType  SplitType
+  occurredAt DateTime
+  createdAt  DateTime  @default(now())
+
+  group  Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy User           @relation("PaidBy", fields: [paidById], references: [id])
+  splits ExpenseSplit[]
+
+  @@index([groupId])
+}
+
+model ExpenseSplit {
+  id        String  @id @default(uuid())
+  expenseId String
+  userId    String
+  amount    Decimal
+
+  expense GroupExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id])
+
+  @@unique([expenseId, userId])
+}
+
+model Settlement {
+  id         String   @id @default(uuid())
+  fromUserId String
+  toUserId   String
+  groupId    String
+  amount     Decimal
+  createdAt  DateTime @default(now())
+
+  fromUser User  @relation("FromUser", fields: [fromUserId], references: [id])
+  toUser   User  @relation("ToUser", fields: [toUserId], references: [id])
+  group    Group @relation(fields: [groupId], references: [id])
+
+  @@index([groupId])
 }

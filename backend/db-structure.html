@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Budget Buddy – Database Graph</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0f172a;
+      font-family: Arial, sans-serif;
+      color: #e5e7eb;
+      overflow: hidden;
+    }
+
+    svg {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .table {
+      fill: #020617;
+      stroke: #38bdf8;
+      stroke-width: 2;
+      rx: 10;
+    }
+
+    .title {
+      fill: #38bdf8;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .attr {
+      fill: #e5e7eb;
+      font-size: 12px;
+    }
+
+    .pk {
+      fill: #facc15;
+    }
+
+    .fk {
+      fill: #f472b6;
+    }
+
+    .edge {
+      stroke: #94a3b8;
+      stroke-width: 2;
+      marker-end: url(#arrow);
+    }
+  </style>
+</head>
+<body>
+
+<svg>
+  <!-- Arrow definition -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8" />
+    </marker>
+  </defs>
+
+  <!-- User -->
+  <rect x="50" y="50" width="220" height="150" class="table"/>
+  <text x="60" y="75" class="title">User</text>
+  <text x="60" y="95" class="attr pk">id (PK)</text>
+  <text x="60" y="110" class="attr">email</text>
+  <text x="60" y="125" class="attr">name</text>
+  <text x="60" y="140" class="attr">currency</text>
+
+  <!-- Account -->
+  <rect x="350" y="50" width="240" height="170" class="table"/>
+  <text x="360" y="75" class="title">Account</text>
+  <text x="360" y="95" class="attr pk">id (PK)</text>
+  <text x="360" y="110" class="attr fk">userId (FK)</text>
+  <text x="360" y="125" class="attr">name</text>
+  <text x="360" y="140" class="attr">type</text>
+  <text x="360" y="155" class="attr">balance</text>
+
+  <!-- Transaction -->
+  <rect x="350" y="270" width="260" height="200" class="table"/>
+  <text x="360" y="295" class="title">Transaction</text>
+  <text x="360" y="315" class="attr pk">id (PK)</text>
+  <text x="360" y="330" class="attr fk">userId (FK)</text>
+  <text x="360" y="345" class="attr fk">accountId (FK)</text>
+  <text x="360" y="360" class="attr">type</text>
+  <text x="360" y="375" class="attr">amount</text>
+  <text x="360" y="390" class="attr">occurredAt</text>
+
+  <!-- Group -->
+  <rect x="50" y="280" width="220" height="140" class="table"/>
+  <text x="60" y="305" class="title">Group</text>
+  <text x="60" y="325" class="attr pk">id (PK)</text>
+  <text x="60" y="340" class="attr">name</text>
+  <text x="60" y="355" class="attr fk">ownerId (FK)</text>
+
+  <!-- GroupExpense -->
+  <rect x="50" y="480" width="260" height="180" class="table"/>
+  <text x="60" y="505" class="title">GroupExpense</text>
+  <text x="60" y="525" class="attr pk">id (PK)</text>
+  <text x="60" y="540" class="attr fk">groupId (FK)</text>
+  <text x="60" y="555" class="attr fk">paidById (FK)</text>
+  <text x="60" y="570" class="attr">amount</text>
+  <text x="60" y="585" class="attr">splitType</text>
+
+  <!-- Edges -->
+  <line x1="270" y1="100" x2="350" y2="100" class="edge"/> <!-- User -> Account -->
+  <line x1="470" y1="220" x2="470" y2="270" class="edge"/> <!-- Account -> Transaction -->
+  <line x1="160" y1="200" x2="160" y2="280" class="edge"/> <!-- User -> Group -->
+  <line x1="160" y1="420" x2="160" y2="480" class="edge"/> <!-- Group -> GroupExpense -->
+  <line x1="270" y1="140" x2="350" y2="330" class="edge"/> <!-- User -> Transaction -->
+
+</svg>
+
+</body>
+</html>
