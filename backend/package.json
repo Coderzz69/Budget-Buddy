@@ -10,16 +10,17 @@
         "prisma:migrate": "prisma migrate dev"
     },
     "dependencies": {
-        "@prisma/client": "^6.3.0",
-        "cors": "^2.8.5",
-        "dotenv": "^16.4.7",
-        "express": "^4.21.2"
+        "@clerk/express": "^1.7.68",
+        "@prisma/client": "^6.19.2",
+        "cors": "^2.8.6",
+        "dotenv": "^16.6.1",
+        "express": "^4.22.1"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.0",
         "@types/node": "^22.13.1",
-        "nodemon": "^3.1.9",
+        "nodemon": "^3.1.11",
         "prisma": "^6.3.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.7.3"
