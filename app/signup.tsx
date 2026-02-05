@@ -16,15 +16,15 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, SlideInRight } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
+import { syncUser } from '../utils/api';
 
 export default function SignupScreen() {
-    const { isLoaded, signUp, setActive } = useSignUp();
     const router = useRouter();
+    const { signUp, setActive, isLoaded } = useSignUp();
 
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
-    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [code, setCode] = useState('');
     const [pendingVerification, setPendingVerification] = useState(false);
@@ -38,34 +38,55 @@ export default function SignupScreen() {
     });
 
     const onSignUpPress = async () => {
-        if (!isLoaded) return;
-        if (!email || !password || !username || !firstName || !lastName) {
+        if (!email || !password || !firstName || !lastName) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter all fields' });
             return;
         }
+
+        if (!isLoaded) {
+            return;
+        }
+
         setLoading(true);
 
         try {
             await signUp.create({
+                emailAddress: email,
+                password,
                 firstName,
                 lastName,
-                emailAddress: email,
-                username,
-                password,
             });
 
             await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
             setPendingVerification(true);
+            setAlertConfig({
+                visible: true,
+                title: 'Check Your Email',
+                message: 'We sent you a verification code. Please check your email.',
+            });
         } catch (err: any) {
-            console.error(JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Signup failed' });
+            console.error('Signup error:', JSON.stringify(err, null, 2));
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Signup failed'
+            });
         } finally {
             setLoading(false);
         }
     };
 
     const onPressVerify = async () => {
-        if (!isLoaded) return;
+        if (!code || code.length !== 6) {
+            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter the 6-digit code' });
+            return;
+        }
+
+        if (!isLoaded) {
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -73,17 +94,38 @@ export default function SignupScreen() {
                 code,
             });
 
-            if (completeSignUp.status === 'complete') {
-                await setActive({ session: completeSignUp.createdSessionId });
+            await setActive({ session: completeSignUp.createdSessionId });
+
+            // Sync user to database
+            try {
+                // Get session token from Clerk
+                const token = await completeSignUp.createdSessionId;
+                if (token) {
+                    await syncUser(token, { email, firstName, lastName });
+                    console.log('User synced to database');
+                }
+            } catch (syncError) {
+                console.error('Failed to sync user to database:', syncError);
+                // Don't block the user from proceeding even if sync fails
+            }
+
+            setAlertConfig({
+                visible: true,
+                title: 'Success',
+                message: 'Email verified successfully!',
+            });
+
+            setTimeout(() => {
                 // @ts-ignore
                 router.replace('/dashboard');
-            } else {
-                console.error(JSON.stringify(completeSignUp, null, 2));
-                setAlertConfig({ visible: true, title: 'Error', message: 'Verification failed.' });
-            }
+            }, 1500);
         } catch (err: any) {
-            console.error(JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Verification failed' });
+            console.error('Verification error:', JSON.stringify(err, null, 2));
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Verification failed'
+            });
         } finally {
             setLoading(false);
         }
@@ -130,18 +172,6 @@ export default function SignupScreen() {
                             </View>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Username</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="username"
-                                    placeholderTextColor="#666"
-                                    value={username}
-                                    onChangeText={setUsername}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Email</Text>
                                 <TextInput
                                     style={styles.input}
@@ -176,6 +206,9 @@ export default function SignupScreen() {
                                         />
                                     </TouchableOpacity>
                                 </View>
+                                <Text style={styles.hint}>
+                                    Must be at least 8 characters
+                                </Text>
                             </View>
 
                             <TouchableOpacity
@@ -238,9 +271,9 @@ export default function SignupScreen() {
                             </View>
 
                             <View style={styles.resendContainer}>
-                                <Text style={styles.footerText}>Didn't receive the OTP? </Text>
-                                <TouchableOpacity>
-                                    <Text style={styles.resendText}>Resend OTP</Text>
+                                <Text style={styles.footerText}>Didn't receive the code? </Text>
+                                <TouchableOpacity onPress={onSignUpPress}>
+                                    <Text style={styles.resendText}>Resend Code</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -272,7 +305,7 @@ export default function SignupScreen() {
                 message={alertConfig.message}
                 onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
             />
-        </KeyboardAvoidingView >
+        </KeyboardAvoidingView>
     );
 }
 
@@ -324,7 +357,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     input: {
-        backgroundColor: '#3A3A3C', // Lighter background
+        backgroundColor: '#3A3A3C',
         borderRadius: 12,
         height: 52,
         paddingHorizontal: 16,
@@ -333,7 +366,7 @@ const styles = StyleSheet.create({
         borderColor: '#333',
     },
     passwordContainer: {
-        backgroundColor: '#3A3A3C', // Lighter background
+        backgroundColor: '#3A3A3C',
         borderRadius: 12,
         height: 52,
         paddingHorizontal: 16,
@@ -349,6 +382,11 @@ const styles = StyleSheet.create({
     },
     eyeIcon: {
         padding: 4,
+    },
+    hint: {
+        color: '#888',
+        fontSize: 12,
+        marginTop: 4,
     },
     button: {
         height: 56,
