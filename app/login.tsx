@@ -1,11 +1,9 @@
-import { useOAuth, useSignIn } from '@clerk/clerk-expo';
+import { useSignIn } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import * as WebBrowser from 'expo-web-browser';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -19,12 +17,11 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-
-WebBrowser.maybeCompleteAuthSession();
+import { syncUser } from '../utils/api';
 
 export default function LoginScreen() {
-    const { signIn, setActive, isLoaded } = useSignIn();
     const router = useRouter();
+    const { signIn, setActive, isLoaded } = useSignIn();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -37,8 +34,6 @@ export default function LoginScreen() {
         title: '',
         message: '',
     });
-
-    const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
     useEffect(() => {
         async function loadSavedEmail() {
@@ -56,54 +51,101 @@ export default function LoginScreen() {
     }, []);
 
     const handleEmailLogin = async () => {
-        if (!isLoaded) return;
         if (!email || !password) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter both email and password' });
             return;
         }
+
+        if (!isLoaded) {
+            return;
+        }
+
         setLoading(true);
         try {
-            const signInAttempt = await signIn.create({
+            const completeSignIn = await signIn.create({
                 identifier: email,
                 password,
             });
 
-            if (signInAttempt.status === 'complete') {
-                await setActive({ session: signInAttempt.createdSessionId });
+            await setActive({ session: completeSignIn.createdSessionId });
 
-                if (rememberMe) {
-                    await SecureStore.setItemAsync('saved_email', email);
-                } else {
-                    await SecureStore.deleteItemAsync('saved_email');
+            // Sync user to database
+            try {
+                const token = completeSignIn.createdSessionId;
+                if (token) {
+                    await syncUser(token, { email });
+                    console.log('User synced to database');
                 }
-
-                // @ts-ignore
-                router.replace('/dashboard');
-            } else {
-                console.error(JSON.stringify(signInAttempt, null, 2));
-                setAlertConfig({ visible: true, title: 'Error', message: 'Login failed. Please check your credentials.' });
+            } catch (syncError) {
+                console.error('Failed to sync user to database:', syncError);
+                // Don't block the user from proceeding even if sync fails
             }
+
+            if (rememberMe) {
+                await SecureStore.setItemAsync('saved_email', email);
+            } else {
+                await SecureStore.deleteItemAsync('saved_email');
+            }
+
+            // @ts-ignore
+            router.replace('/dashboard');
         } catch (err: any) {
-            console.error(JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Login failed' });
+            console.error('Login error:', JSON.stringify(err, null, 2));
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Login failed. Please check your credentials.'
+            });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGoogleLogin = useCallback(async () => {
+    const handleGoogleLogin = async () => {
+        if (!isLoaded) {
+            return;
+        }
+
         try {
-            const { createdSessionId, signIn, signUp, setActive } = await startOAuthFlow({
-                redirectUrl: Linking.createURL('/dashboard', { scheme: 'budgetbuddy' }),
+            setLoading(true);
+
+            // Start Google OAuth flow
+            const result = await signIn.create({
+                strategy: 'oauth_google',
+                redirectUrl: 'exp://192.168.1.1:8081/oauth-callback',
             });
 
-            if (createdSessionId) {
-                setActive!({ session: createdSessionId });
+            // If OAuth completes successfully
+            if (result.status === 'complete' && setActive) {
+                await setActive({ session: result.createdSessionId });
+
+                // Sync user to database
+                try {
+                    const token = result.createdSessionId;
+                    if (token) {
+                        // Backend will extract email from session token
+                        await syncUser(token, {});
+                        console.log('Google user synced to database');
+                    }
+                } catch (syncError) {
+                    console.error('Failed to sync Google user to database:', syncError);
+                }
+
+                // @ts-ignore
+                router.replace('/dashboard');
             }
-        } catch (err) {
-            console.error('OAuth error', err);
+
+        } catch (err: any) {
+            console.error('Google OAuth error', err);
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Google sign-in failed'
+            });
+        } finally {
+            setLoading(false);
         }
-    }, []);
+    };
 
     const goToSignup = () => {
         router.push('/signup');
@@ -111,7 +153,7 @@ export default function LoginScreen() {
 
     const goToForgotPassword = () => {
         router.push('/forgot-password');
-    }
+    };
 
     return (
         <KeyboardAvoidingView
@@ -211,6 +253,7 @@ export default function LoginScreen() {
                             style={[styles.socialButton, { backgroundColor: '#FFFFFF', borderWidth: 0 }]}
                             onPress={handleGoogleLogin}
                             activeOpacity={0.9}
+                            disabled={loading}
                         >
                             <Ionicons name="logo-google" size={20} color="#000" />
                             <Text style={[styles.socialButtonText, { color: '#000', marginLeft: 8 }]}>Sign In with Google</Text>
@@ -225,14 +268,14 @@ export default function LoginScreen() {
                     </View>
 
                 </Animated.View>
-            </ScrollView >
+            </ScrollView>
             <CustomAlert
                 visible={alertConfig.visible}
                 title={alertConfig.title}
                 message={alertConfig.message}
                 onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
             />
-        </KeyboardAvoidingView >
+        </KeyboardAvoidingView>
     );
 }
 

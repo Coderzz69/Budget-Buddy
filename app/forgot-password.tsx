@@ -18,13 +18,13 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
 
 export default function ForgotPasswordScreen() {
-    const { signIn, setActive, isLoaded } = useSignIn();
     const router = useRouter();
+    const { signIn, setActive, isLoaded } = useSignIn();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [code, setCode] = useState('');
-    const [successfulCreation, setSuccessfulCreation] = useState(false);
+    const [successfulRequest, setSuccessfulRequest] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const [showPassword, setShowPassword] = useState(false);
@@ -34,11 +34,13 @@ export default function ForgotPasswordScreen() {
         message: '',
     });
 
-    // Request the password reset code
     const onRequestReset = async () => {
-        if (!isLoaded) return;
         if (!email) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter your email address' });
+            return;
+        }
+
+        if (!isLoaded) {
             return;
         }
 
@@ -48,21 +50,37 @@ export default function ForgotPasswordScreen() {
                 strategy: 'reset_password_email_code',
                 identifier: email,
             });
-            setSuccessfulCreation(true);
-            setAlertConfig({ visible: true, title: 'Check your email', message: 'We sent you a verification code.' });
+
+            setSuccessfulRequest(true);
+            setAlertConfig({
+                visible: true,
+                title: 'Check your email',
+                message: 'We sent you a 6-digit reset code.'
+            });
         } catch (err: any) {
             console.error('Request reset error:', JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Failed to send reset code' });
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Failed to send reset code'
+            });
         } finally {
             setLoading(false);
         }
     };
 
-    // Reset the password with code and new password
     const onReset = async () => {
-        if (!isLoaded) return;
         if (!code || !password) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter the code and your new password' });
+            return;
+        }
+
+        if (code.length !== 6) {
+            setAlertConfig({ visible: true, title: 'Error', message: 'Code must be 6 digits' });
+            return;
+        }
+
+        if (!isLoaded) {
             return;
         }
 
@@ -76,16 +94,25 @@ export default function ForgotPasswordScreen() {
 
             if (result.status === 'complete') {
                 await setActive({ session: result.createdSessionId });
-                setAlertConfig({ visible: true, title: 'Success', message: 'Your password has been reset.' });
-                // @ts-ignore
-                router.replace('/dashboard');
-            } else {
-                console.error(JSON.stringify(result, null, 2));
-                setAlertConfig({ visible: true, title: 'Error', message: 'Failed to reset password. Please try again.' });
+
+                setAlertConfig({
+                    visible: true,
+                    title: 'Success',
+                    message: 'Your password has been reset.'
+                });
+
+                setTimeout(() => {
+                    // @ts-ignore
+                    router.replace('/dashboard');
+                }, 1500);
             }
         } catch (err: any) {
             console.error('Reset error:', JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Failed to reset password' });
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Failed to reset password'
+            });
         } finally {
             setLoading(false);
         }
@@ -106,10 +133,10 @@ export default function ForgotPasswordScreen() {
                 >
                     <Text style={styles.title}>Reset Password</Text>
 
-                    {!successfulCreation ? (
+                    {!successfulRequest ? (
                         <>
                             <Text style={styles.subtitle}>
-                                Enter the email address associated with your account and we'll send you a link to reset your password.
+                                Enter the email address associated with your account and we'll send you a code to reset your password.
                             </Text>
 
                             <View style={styles.inputGroup}>
@@ -147,7 +174,7 @@ export default function ForgotPasswordScreen() {
                     ) : (
                         <>
                             <Text style={styles.subtitle}>
-                                Check your email for the verification code.
+                                Check your email for the 6-digit verification code.
                             </Text>
 
                             <View style={styles.inputGroup}>
@@ -201,6 +228,9 @@ export default function ForgotPasswordScreen() {
                                         />
                                     </TouchableOpacity>
                                 </View>
+                                <Text style={styles.hint}>
+                                    Must be at least 8 characters
+                                </Text>
                             </View>
 
                             <TouchableOpacity
@@ -237,7 +267,7 @@ export default function ForgotPasswordScreen() {
                 message={alertConfig.message}
                 onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
             />
-        </KeyboardAvoidingView >
+        </KeyboardAvoidingView>
     );
 }
 
@@ -285,7 +315,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     input: {
-        backgroundColor: '#3A3A3C', // Lighter background
+        backgroundColor: '#3A3A3C',
         borderRadius: 12,
         height: 52,
         paddingHorizontal: 16,
@@ -294,7 +324,7 @@ const styles = StyleSheet.create({
         borderColor: '#333',
     },
     passwordContainer: {
-        backgroundColor: '#3A3A3C', // Lighter background
+        backgroundColor: '#3A3A3C',
         borderRadius: 12,
         height: 52,
         paddingHorizontal: 16,
@@ -310,6 +340,11 @@ const styles = StyleSheet.create({
     },
     eyeIcon: {
         padding: 4,
+    },
+    hint: {
+        color: '#888',
+        fontSize: 12,
+        marginTop: 4,
     },
     button: {
         height: 56,
