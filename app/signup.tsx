@@ -16,16 +16,18 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, SlideInRight } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
+import { syncUser } from '../utils/api';
 
 export default function SignupScreen() {
-    const { isLoaded, signUp, setActive } = useSignUp();
     const router = useRouter();
+    const { signUp, setActive, isLoaded } = useSignUp();
 
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [code, setCode] = useState('');
     const [pendingVerification, setPendingVerification] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -38,52 +40,122 @@ export default function SignupScreen() {
     });
 
     const onSignUpPress = async () => {
-        if (!isLoaded) return;
-        if (!email || !password || !username || !firstName || !lastName) {
+        if (!email || !password || !confirmPassword || !firstName || !lastName || !username) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter all fields' });
             return;
         }
+
+        if (password !== confirmPassword) {
+            setAlertConfig({ visible: true, title: 'Error', message: 'Passwords do not match' });
+            return;
+        }
+
+        if (!isLoaded) {
+            return;
+        }
+
         setLoading(true);
 
         try {
+            console.log('Creating signup with:', { email, username, firstName, lastName });
             await signUp.create({
+                emailAddress: email,
+                password,
+                username,
                 firstName,
                 lastName,
-                emailAddress: email,
-                username,
-                password,
             });
 
             await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
             setPendingVerification(true);
+            setAlertConfig({
+                visible: true,
+                title: 'Check Your Email',
+                message: 'We sent you a verification code. Please check your email.',
+            });
         } catch (err: any) {
-            console.error(JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Signup failed' });
+            console.error('Signup error:', JSON.stringify(err, null, 2));
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Signup failed'
+            });
         } finally {
             setLoading(false);
         }
     };
 
     const onPressVerify = async () => {
-        if (!isLoaded) return;
+        if (!code || code.length !== 6) {
+            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter the 6-digit code' });
+            return;
+        }
+
+        if (!isLoaded) {
+            return;
+        }
+
         setLoading(true);
 
         try {
+            console.log('Attempting verification with code:', code);
             const completeSignUp = await signUp.attemptEmailAddressVerification({
                 code,
             });
+            console.log('Verification result status:', completeSignUp.status);
+            console.log('Verification result full:', JSON.stringify(completeSignUp, null, 2));
 
             if (completeSignUp.status === 'complete') {
+                console.log('Signup complete, setting active session...');
                 await setActive({ session: completeSignUp.createdSessionId });
-                // @ts-ignore
-                router.replace('/dashboard');
+                console.log('Session set active.');
+
+                // Sync user to database (fire and forget)
+                // Get session token from Clerk
+                const token = completeSignUp.createdSessionId;
+                if (token) {
+                    console.log('Syncing user to backend...');
+                    syncUser(token, { email, firstName, lastName, username }).then(() => {
+                        console.log('User synced to backend successfully.');
+                    }).catch(err => {
+                        console.error('Background sync failed:', err);
+                    });
+                }
+
+                setAlertConfig({
+                    visible: true,
+                    title: 'Success',
+                    message: 'Email verified successfully!',
+                });
+
+                // Fallback redirect if _layout doesn't pick it up fast enough
+                if (isLoaded) {
+                    setTimeout(() => {
+                        router.replace('/dashboard');
+                    }, 500);
+                }
             } else {
-                console.error(JSON.stringify(completeSignUp, null, 2));
-                setAlertConfig({ visible: true, title: 'Error', message: 'Verification failed.' });
+                console.error('Signup status not complete:', completeSignUp.status);
+                // @ts-ignore
+                const missing = completeSignUp.missingFields || completeSignUp.unverifiedFields || [];
+                console.error('Missing/Unverified fields:', JSON.stringify(missing));
+
+                setAlertConfig({
+                    visible: true,
+                    title: 'Signup Incomplete',
+                    message: `Status: ${completeSignUp.status}\nMissing: ${missing.join(', ') || 'Unknown requirements'}`
+                });
             }
+
+            // Redirect is handled by _layout.tsx based on active session
         } catch (err: any) {
-            console.error(JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Verification failed' });
+            console.error('Verification error:', JSON.stringify(err, null, 2));
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Verification failed'
+            });
         } finally {
             setLoading(false);
         }
@@ -130,18 +202,6 @@ export default function SignupScreen() {
                             </View>
 
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Username</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="username"
-                                    placeholderTextColor="#666"
-                                    value={username}
-                                    onChangeText={setUsername}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Email</Text>
                                 <TextInput
                                     style={styles.input}
@@ -151,6 +211,18 @@ export default function SignupScreen() {
                                     onChangeText={setEmail}
                                     autoCapitalize="none"
                                     keyboardType="email-address"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Username</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="johndoe123"
+                                    placeholderTextColor="#666"
+                                    value={username}
+                                    onChangeText={setUsername}
+                                    autoCapitalize="none"
                                 />
                             </View>
 
@@ -175,6 +247,23 @@ export default function SignupScreen() {
                                             color="#666"
                                         />
                                     </TouchableOpacity>
+                                </View>
+                                <Text style={styles.hint}>
+                                    Must be at least 8 characters
+                                </Text>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Confirm Password</Text>
+                                <View style={styles.passwordContainer}>
+                                    <TextInput
+                                        style={styles.passwordInput}
+                                        placeholder="*************"
+                                        placeholderTextColor="#666"
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry={!showPassword}
+                                    />
                                 </View>
                             </View>
 
@@ -238,9 +327,9 @@ export default function SignupScreen() {
                             </View>
 
                             <View style={styles.resendContainer}>
-                                <Text style={styles.footerText}>Didn't receive the OTP? </Text>
-                                <TouchableOpacity>
-                                    <Text style={styles.resendText}>Resend OTP</Text>
+                                <Text style={styles.footerText}>Didn't receive the code? </Text>
+                                <TouchableOpacity onPress={onSignUpPress}>
+                                    <Text style={styles.resendText}>Resend Code</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -272,7 +361,7 @@ export default function SignupScreen() {
                 message={alertConfig.message}
                 onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
             />
-        </KeyboardAvoidingView >
+        </KeyboardAvoidingView>
     );
 }
 
@@ -324,7 +413,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     input: {
-        backgroundColor: '#3A3A3C', // Lighter background
+        backgroundColor: '#3A3A3C',
         borderRadius: 12,
         height: 52,
         paddingHorizontal: 16,
@@ -333,7 +422,7 @@ const styles = StyleSheet.create({
         borderColor: '#333',
     },
     passwordContainer: {
-        backgroundColor: '#3A3A3C', // Lighter background
+        backgroundColor: '#3A3A3C',
         borderRadius: 12,
         height: 52,
         paddingHorizontal: 16,
@@ -349,6 +438,11 @@ const styles = StyleSheet.create({
     },
     eyeIcon: {
         padding: 4,
+    },
+    hint: {
+        color: '#888',
+        fontSize: 12,
+        marginTop: 4,
     },
     button: {
         height: 56,

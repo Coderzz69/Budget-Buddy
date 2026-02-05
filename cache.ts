@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 export interface TokenCache {
     getToken: (key: string) => Promise<string | undefined | null>;
@@ -31,4 +32,4 @@ const tokenCache = {
     },
 };
 
-export default tokenCache;
+export default Platform.OS === 'web' ? undefined : tokenCache;
