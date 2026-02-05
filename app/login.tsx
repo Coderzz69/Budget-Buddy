@@ -1,6 +1,7 @@
-import { useSignIn } from '@clerk/clerk-expo';
+import { useOAuth, useSignIn } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useState } from 'react';
@@ -17,11 +18,15 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
+import { useWarmUpBrowser } from '../hooks/useWarmUpBrowser';
 import { syncUser } from '../utils/api';
 
 export default function LoginScreen() {
+    useWarmUpBrowser();
+
     const router = useRouter();
     const { signIn, setActive, isLoaded } = useSignIn();
+    const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -69,16 +74,12 @@ export default function LoginScreen() {
 
             await setActive({ session: completeSignIn.createdSessionId });
 
-            // Sync user to database
-            try {
-                const token = completeSignIn.createdSessionId;
-                if (token) {
-                    await syncUser(token, { email });
-                    console.log('User synced to database');
-                }
-            } catch (syncError) {
-                console.error('Failed to sync user to database:', syncError);
-                // Don't block the user from proceeding even if sync fails
+            // Sync user to database (fire and forget)
+            const token = completeSignIn.createdSessionId;
+            if (token) {
+                syncUser(token, { email }).catch(err => {
+                    console.error('Background sync failed:', err);
+                });
             }
 
             if (rememberMe) {
@@ -88,7 +89,7 @@ export default function LoginScreen() {
             }
 
             // @ts-ignore
-            router.replace('/dashboard');
+            // router.replace('/dashboard');
         } catch (err: any) {
             console.error('Login error:', JSON.stringify(err, null, 2));
             setAlertConfig({
@@ -102,48 +103,51 @@ export default function LoginScreen() {
     };
 
     const handleGoogleLogin = async () => {
-        if (!isLoaded) {
-            return;
-        }
-
         try {
-            setLoading(true);
-
-            // Start Google OAuth flow
-            const result = await signIn.create({
-                strategy: 'oauth_google',
-                redirectUrl: 'exp://192.168.1.1:8081/oauth-callback',
+            const { createdSessionId, setActive, signUp, signIn } = await startOAuthFlow({
+                redirectUrl: Linking.createURL('/dashboard', { scheme: 'budgetbuddy' }),
             });
 
-            // If OAuth completes successfully
-            if (result.status === 'complete' && setActive) {
-                await setActive({ session: result.createdSessionId });
+            if (createdSessionId && setActive) {
+                console.log('Google Auth success. Session:', createdSessionId);
+                await setActive({ session: createdSessionId });
 
-                // Sync user to database
-                try {
-                    const token = result.createdSessionId;
-                    if (token) {
-                        // Backend will extract email from session token
-                        await syncUser(token, {});
-                        console.log('Google user synced to database');
-                    }
-                } catch (syncError) {
-                    console.error('Failed to sync Google user to database:', syncError);
-                }
+                // Sync user to database (fire and forget)
+                // If we are here, we are logged in.
 
-                // @ts-ignore
-                router.replace('/dashboard');
+                // Safe access with any cast for debugging
+                const firstName = signUp?.firstName || (signIn?.userData as any)?.firstName;
+                const lastName = signUp?.lastName || (signIn?.userData as any)?.lastName;
+                const email = signUp?.emailAddress || (signIn?.userData as any)?.identifier || (signIn as any)?.identifier;
+
+                console.log('Syncing Google user:', { email, firstName, lastName });
+
+                syncUser(createdSessionId, {
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName
+                }).catch(err => {
+                    console.error('Background Google sync failed:', err);
+                });
+            } else if (signUp && signUp.status === 'missing_requirements') {
+                console.log('Google Auth missing requirements. Redirecting to complete-profile.');
+                // Redirect to completion screen
+                // We don't setActive here because it's not complete.
+                router.push('/complete-profile');
+            } else {
+                // Use signIn or signUp for next steps such as MFA
+                console.log('Google Auth status:', {
+                    signInStatus: signIn?.status,
+                    signUpStatus: signUp?.status
+                });
             }
-
         } catch (err: any) {
-            console.error('Google OAuth error', err);
+            console.error('OAuth error', err);
             setAlertConfig({
                 visible: true,
                 title: 'Error',
                 message: err.errors?.[0]?.message || 'Google sign-in failed'
             });
-        } finally {
-            setLoading(false);
         }
     };
 

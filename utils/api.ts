@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://ba-6696c75cc6d44a1683979f86653da53a.ecs.ap-south-1.on.aws';
 
 class ApiClient {
     private baseURL: string;
@@ -33,7 +33,10 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${this.baseURL}${endpoint}`, {
+        const url = `${this.baseURL}${endpoint}`;
+        console.log(`[API] Requesting: ${url}`);
+
+        const response = await fetch(url, {
             ...options,
             headers,
         });
@@ -58,7 +61,7 @@ class ApiClient {
 export const api = new ApiClient();
 
 // Sync user to database after authentication
-export const syncUser = async (token: string, userData: { email?: string; firstName?: string; lastName?: string } = {}) => {
+export const syncUser = async (token: string, userData: { email?: string; firstName?: string; lastName?: string; username?: string } = {}) => {
     await api.setToken(token);
     return api.post('/auth/sync', userData);
 };

@@ -24,8 +24,10 @@ export default function SignupScreen() {
 
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [code, setCode] = useState('');
     const [pendingVerification, setPendingVerification] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -38,8 +40,13 @@ export default function SignupScreen() {
     });
 
     const onSignUpPress = async () => {
-        if (!email || !password || !firstName || !lastName) {
+        if (!email || !password || !confirmPassword || !firstName || !lastName || !username) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter all fields' });
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setAlertConfig({ visible: true, title: 'Error', message: 'Passwords do not match' });
             return;
         }
 
@@ -50,9 +57,11 @@ export default function SignupScreen() {
         setLoading(true);
 
         try {
+            console.log('Creating signup with:', { email, username, firstName, lastName });
             await signUp.create({
                 emailAddress: email,
                 password,
+                username,
                 firstName,
                 lastName,
             });
@@ -90,35 +99,56 @@ export default function SignupScreen() {
         setLoading(true);
 
         try {
+            console.log('Attempting verification with code:', code);
             const completeSignUp = await signUp.attemptEmailAddressVerification({
                 code,
             });
+            console.log('Verification result status:', completeSignUp.status);
+            console.log('Verification result full:', JSON.stringify(completeSignUp, null, 2));
 
-            await setActive({ session: completeSignUp.createdSessionId });
+            if (completeSignUp.status === 'complete') {
+                console.log('Signup complete, setting active session...');
+                await setActive({ session: completeSignUp.createdSessionId });
+                console.log('Session set active.');
 
-            // Sync user to database
-            try {
+                // Sync user to database (fire and forget)
                 // Get session token from Clerk
-                const token = await completeSignUp.createdSessionId;
+                const token = completeSignUp.createdSessionId;
                 if (token) {
-                    await syncUser(token, { email, firstName, lastName });
-                    console.log('User synced to database');
+                    console.log('Syncing user to backend...');
+                    syncUser(token, { email, firstName, lastName, username }).then(() => {
+                        console.log('User synced to backend successfully.');
+                    }).catch(err => {
+                        console.error('Background sync failed:', err);
+                    });
                 }
-            } catch (syncError) {
-                console.error('Failed to sync user to database:', syncError);
-                // Don't block the user from proceeding even if sync fails
+
+                setAlertConfig({
+                    visible: true,
+                    title: 'Success',
+                    message: 'Email verified successfully!',
+                });
+
+                // Fallback redirect if _layout doesn't pick it up fast enough
+                if (isLoaded) {
+                    setTimeout(() => {
+                        router.replace('/dashboard');
+                    }, 500);
+                }
+            } else {
+                console.error('Signup status not complete:', completeSignUp.status);
+                // @ts-ignore
+                const missing = completeSignUp.missingFields || completeSignUp.unverifiedFields || [];
+                console.error('Missing/Unverified fields:', JSON.stringify(missing));
+
+                setAlertConfig({
+                    visible: true,
+                    title: 'Signup Incomplete',
+                    message: `Status: ${completeSignUp.status}\nMissing: ${missing.join(', ') || 'Unknown requirements'}`
+                });
             }
 
-            setAlertConfig({
-                visible: true,
-                title: 'Success',
-                message: 'Email verified successfully!',
-            });
-
-            setTimeout(() => {
-                // @ts-ignore
-                router.replace('/dashboard');
-            }, 1500);
+            // Redirect is handled by _layout.tsx based on active session
         } catch (err: any) {
             console.error('Verification error:', JSON.stringify(err, null, 2));
             setAlertConfig({
@@ -185,6 +215,18 @@ export default function SignupScreen() {
                             </View>
 
                             <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Username</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="johndoe123"
+                                    placeholderTextColor="#666"
+                                    value={username}
+                                    onChangeText={setUsername}
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
                                 <Text style={styles.label}>Password</Text>
                                 <View style={styles.passwordContainer}>
                                     <TextInput
@@ -209,6 +251,20 @@ export default function SignupScreen() {
                                 <Text style={styles.hint}>
                                     Must be at least 8 characters
                                 </Text>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Confirm Password</Text>
+                                <View style={styles.passwordContainer}>
+                                    <TextInput
+                                        style={styles.passwordInput}
+                                        placeholder="*************"
+                                        placeholderTextColor="#666"
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        secureTextEntry={!showPassword}
+                                    />
+                                </View>
                             </View>
 
                             <TouchableOpacity
