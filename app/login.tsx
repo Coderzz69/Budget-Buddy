@@ -4,8 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import * as WebBrowser from 'expo-web-browser';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -19,12 +18,15 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-
-WebBrowser.maybeCompleteAuthSession();
+import { useWarmUpBrowser } from '../hooks/useWarmUpBrowser';
+import { syncUser } from '../utils/api';
 
 export default function LoginScreen() {
-    const { signIn, setActive, isLoaded } = useSignIn();
+    useWarmUpBrowser();
+
     const router = useRouter();
+    const { signIn, setActive, isLoaded } = useSignIn();
+    const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -37,8 +39,6 @@ export default function LoginScreen() {
         title: '',
         message: '',
     });
-
-    const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
     useEffect(() => {
         async function loadSavedEmail() {
@@ -56,54 +56,100 @@ export default function LoginScreen() {
     }, []);
 
     const handleEmailLogin = async () => {
-        if (!isLoaded) return;
         if (!email || !password) {
             setAlertConfig({ visible: true, title: 'Error', message: 'Please enter both email and password' });
             return;
         }
+
+        if (!isLoaded) {
+            return;
+        }
+
         setLoading(true);
         try {
-            const signInAttempt = await signIn.create({
+            const completeSignIn = await signIn.create({
                 identifier: email,
                 password,
             });
 
-            if (signInAttempt.status === 'complete') {
-                await setActive({ session: signInAttempt.createdSessionId });
+            await setActive({ session: completeSignIn.createdSessionId });
 
-                if (rememberMe) {
-                    await SecureStore.setItemAsync('saved_email', email);
-                } else {
-                    await SecureStore.deleteItemAsync('saved_email');
-                }
-
-                // @ts-ignore
-                router.replace('/dashboard');
-            } else {
-                console.error(JSON.stringify(signInAttempt, null, 2));
-                setAlertConfig({ visible: true, title: 'Error', message: 'Login failed. Please check your credentials.' });
+            // Sync user to database (fire and forget)
+            const token = completeSignIn.createdSessionId;
+            if (token) {
+                syncUser(token, { email }).catch(err => {
+                    console.error('Background sync failed:', err);
+                });
             }
+
+            if (rememberMe) {
+                await SecureStore.setItemAsync('saved_email', email);
+            } else {
+                await SecureStore.deleteItemAsync('saved_email');
+            }
+
+            // @ts-ignore
+            // router.replace('/dashboard');
         } catch (err: any) {
-            console.error(JSON.stringify(err, null, 2));
-            setAlertConfig({ visible: true, title: 'Error', message: err.errors?.[0]?.message || 'Login failed' });
+            console.error('Login error:', JSON.stringify(err, null, 2));
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Login failed. Please check your credentials.'
+            });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleGoogleLogin = useCallback(async () => {
+    const handleGoogleLogin = async () => {
         try {
-            const { createdSessionId, signIn, signUp, setActive } = await startOAuthFlow({
+            const { createdSessionId, setActive, signUp, signIn } = await startOAuthFlow({
                 redirectUrl: Linking.createURL('/dashboard', { scheme: 'budgetbuddy' }),
             });
 
-            if (createdSessionId) {
-                setActive!({ session: createdSessionId });
+            if (createdSessionId && setActive) {
+                console.log('Google Auth success. Session:', createdSessionId);
+                await setActive({ session: createdSessionId });
+
+                // Sync user to database (fire and forget)
+                // If we are here, we are logged in.
+
+                // Safe access with any cast for debugging
+                const firstName = signUp?.firstName || (signIn?.userData as any)?.firstName;
+                const lastName = signUp?.lastName || (signIn?.userData as any)?.lastName;
+                const email = signUp?.emailAddress || (signIn?.userData as any)?.identifier || (signIn as any)?.identifier;
+
+                console.log('Syncing Google user:', { email, firstName, lastName });
+
+                syncUser(createdSessionId, {
+                    email: email,
+                    firstName: firstName,
+                    lastName: lastName
+                }).catch(err => {
+                    console.error('Background Google sync failed:', err);
+                });
+            } else if (signUp && signUp.status === 'missing_requirements') {
+                console.log('Google Auth missing requirements. Redirecting to complete-profile.');
+                // Redirect to completion screen
+                // We don't setActive here because it's not complete.
+                router.push('/complete-profile');
+            } else {
+                // Use signIn or signUp for next steps such as MFA
+                console.log('Google Auth status:', {
+                    signInStatus: signIn?.status,
+                    signUpStatus: signUp?.status
+                });
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('OAuth error', err);
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: err.errors?.[0]?.message || 'Google sign-in failed'
+            });
         }
-    }, []);
+    };
 
     const goToSignup = () => {
         router.push('/signup');
@@ -111,7 +157,7 @@ export default function LoginScreen() {
 
     const goToForgotPassword = () => {
         router.push('/forgot-password');
-    }
+    };
 
     return (
         <KeyboardAvoidingView
@@ -211,6 +257,7 @@ export default function LoginScreen() {
                             style={[styles.socialButton, { backgroundColor: '#FFFFFF', borderWidth: 0 }]}
                             onPress={handleGoogleLogin}
                             activeOpacity={0.9}
+                            disabled={loading}
                         >
                             <Ionicons name="logo-google" size={20} color="#000" />
                             <Text style={[styles.socialButtonText, { color: '#000', marginLeft: 8 }]}>Sign In with Google</Text>
@@ -225,14 +272,14 @@ export default function LoginScreen() {
                     </View>
 
                 </Animated.View>
-            </ScrollView >
+            </ScrollView>
             <CustomAlert
                 visible={alertConfig.visible}
                 title={alertConfig.title}
                 message={alertConfig.message}
                 onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
             />
-        </KeyboardAvoidingView >
+        </KeyboardAvoidingView>
     );
 }
 
