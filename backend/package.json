@@ -10,6 +10,7 @@
         "prisma:migrate": "prisma migrate dev"
     },
     "dependencies": {
+        "@clerk/clerk-sdk-node": "^4.13.23",
         "@clerk/express": "^1.7.68",
         "@prisma/client": "^6.19.2",
         "cors": "^2.8.6",
