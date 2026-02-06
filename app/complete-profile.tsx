@@ -61,7 +61,7 @@ export default function CompleteProfileScreen() {
 
                 // Sync to backend
                 const email = signUp.emailAddress || ''; // Should be populated from Google
-                syncUser(signUp.createdSessionId, { email, firstName, lastName, username }).catch(err => {
+                syncUser(signUp.createdSessionId!, { email, firstName, lastName, username }).catch(err => {
                     console.error('Background sync failed:', err);
                 });
 
