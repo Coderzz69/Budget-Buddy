@@ -1,4 +1,4 @@
-import { useOAuth, useSignIn } from '@clerk/clerk-expo';
+import { useAuth, useOAuth, useSignIn } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
@@ -27,6 +27,7 @@ export default function LoginScreen() {
     const router = useRouter();
     const { signIn, setActive, isLoaded } = useSignIn();
     const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
+    const { getToken } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -75,7 +76,8 @@ export default function LoginScreen() {
             await setActive({ session: completeSignIn.createdSessionId });
 
             // Sync user to database (fire and forget)
-            const token = completeSignIn.createdSessionId;
+            const token = await getToken();
+            console.log('JWT:', token);
             if (token) {
                 syncUser(token, { email }).catch(err => {
                     console.error('Background sync failed:', err);
@@ -122,13 +124,18 @@ export default function LoginScreen() {
 
                 console.log('Syncing Google user:', { email, firstName, lastName });
 
-                syncUser(createdSessionId, {
-                    email: email,
-                    firstName: firstName,
-                    lastName: lastName
-                }).catch(err => {
-                    console.error('Background Google sync failed:', err);
-                });
+                const token = await getToken();
+                console.log('JWT (Google):', token);
+
+                if (token) {
+                    syncUser(token, {
+                        email: email,
+                        firstName: firstName,
+                        lastName: lastName
+                    }).catch(err => {
+                        console.error('Background Google sync failed:', err);
+                    });
+                }
             } else if (signUp && signUp.status === 'missing_requirements') {
                 console.log('Google Auth missing requirements. Redirecting to complete-profile.');
                 // Redirect to completion screen
