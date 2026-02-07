@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import * as SecureStore from 'expo-secure-store';
+// import * as SecureStore from 'expo-secure-store'; // Removing direct import
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,6 +20,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
 import { useWarmUpBrowser } from '../hooks/useWarmUpBrowser';
 import { syncUser } from '../utils/api';
+import { getItem, removeItem, setItem } from '../utils/storage';
 
 export default function LoginScreen() {
     useWarmUpBrowser();
@@ -44,7 +45,7 @@ export default function LoginScreen() {
     useEffect(() => {
         async function loadSavedEmail() {
             try {
-                const savedEmail = await SecureStore.getItemAsync('saved_email');
+                const savedEmail = await getItem('saved_email');
                 if (savedEmail) {
                     setEmail(savedEmail);
                     setRememberMe(true);
@@ -85,9 +86,9 @@ export default function LoginScreen() {
             }
 
             if (rememberMe) {
-                await SecureStore.setItemAsync('saved_email', email);
+                await setItem('saved_email', email);
             } else {
-                await SecureStore.deleteItemAsync('saved_email');
+                await removeItem('saved_email');
             }
 
             // @ts-ignore

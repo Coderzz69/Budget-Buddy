@@ -26,6 +26,7 @@ export default function SignupScreen() {
     const [lastName, setLastName] = useState('');
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
+    const [currency, setCurrency] = useState('INR');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [code, setCode] = useState('');
@@ -112,11 +113,10 @@ export default function SignupScreen() {
                 console.log('Session set active.');
 
                 // Sync user to database (fire and forget)
-                // Get session token from Clerk
                 const token = completeSignUp.createdSessionId;
                 if (token) {
                     console.log('Syncing user to backend...');
-                    syncUser(token, { email, firstName, lastName, username }).then(() => {
+                    syncUser(token, { email, firstName, lastName, username, currency }).then(() => {
                         console.log('User synced to backend successfully.');
                     }).catch(err => {
                         console.error('Background sync failed:', err);
@@ -147,8 +147,6 @@ export default function SignupScreen() {
                     message: `Status: ${completeSignUp.status}\nMissing: ${missing.join(', ') || 'Unknown requirements'}`
                 });
             }
-
-            // Redirect is handled by _layout.tsx based on active session
         } catch (err: any) {
             console.error('Verification error:', JSON.stringify(err, null, 2));
             setAlertConfig({
@@ -224,6 +222,27 @@ export default function SignupScreen() {
                                     onChangeText={setUsername}
                                     autoCapitalize="none"
                                 />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Currency</Text>
+                                <View style={styles.currencyContainer}>
+                                    {['INR', 'USD', 'EUR', 'GBP'].map((curr) => (
+                                        <TouchableOpacity
+                                            key={curr}
+                                            style={[
+                                                styles.currencyChip,
+                                                currency === curr && styles.currencyChipActive
+                                            ]}
+                                            onPress={() => setCurrency(curr)}
+                                        >
+                                            <Text style={[
+                                                styles.currencyText,
+                                                currency === curr && styles.currencyTextActive
+                                            ]}>{curr}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
 
                             <View style={styles.inputGroup}>
@@ -519,5 +538,29 @@ const styles = StyleSheet.create({
         color: '#00E0FF',
         fontWeight: 'bold',
         fontSize: 14,
+    },
+    currencyContainer: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    currencyChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#3A3A3C',
+        borderWidth: 1,
+        borderColor: '#333',
+    },
+    currencyChipActive: {
+        backgroundColor: '#00E0FF',
+        borderColor: '#00E0FF',
+    },
+    currencyText: {
+        color: '#ccc',
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    currencyTextActive: {
+        color: '#000',
     },
 });
