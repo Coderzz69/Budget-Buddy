@@ -10,7 +10,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
-import { useAuth } from '@clerk/clerk-expo';
+import { syncUser } from '@/utils/api';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 
@@ -44,6 +45,31 @@ function InitialLayout() {
       router.replace('/login');
     }
   }, [isSignedIn, isLoaded, segments]);
+
+  const { user } = useUser();
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const sync = async () => {
+        try {
+          const token = await getToken();
+          if (token) {
+            await syncUser(token, {
+              email: user.primaryEmailAddress?.emailAddress,
+              firstName: user.firstName || undefined,
+              lastName: user.lastName || undefined,
+              username: user.username || undefined,
+            });
+            console.log('User synced on app launch/auth change');
+          }
+        } catch (error) {
+          console.error('Failed to sync user on launch:', error);
+        }
+      };
+      sync();
+    }
+  }, [isSignedIn, user]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

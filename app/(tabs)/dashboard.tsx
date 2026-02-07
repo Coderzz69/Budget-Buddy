@@ -29,7 +29,13 @@ export default function DashboardScreen() {
         try {
             setError(null);
             const token = await getToken();
-            const response = await fetch('https://ba-6696c75cc6d44a1683979f86653da53a.ecs.ap-south-1.on.aws/users', {
+
+            const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+            if (!apiUrl) {
+                throw new Error('EXPO_PUBLIC_API_URL is not defined in .env');
+            }
+
+            const response = await fetch(`${apiUrl}/users`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
