@@ -1,50 +1,94 @@
-# Welcome to your Expo app 👋
+# Budget Buddy 💰
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Budget Buddy is a modern, cross-platform budget tracking application built with **React Native** and **Expo**. It features secure authentication using **Clerk**, a responsive UI with **NativeWind** (Tailwind CSS), and smooth animations powered by **Reanimated**.
 
-## Get started
+## 🚀 Features
 
-1. Install dependencies
+-   **Authentication**: Secure sign-up and sign-in flow using Clerk (Email/Password & Google OAuth).
+-   **Dashboard**: View user data fetched from a remote API.
+-   **Profile Management**: Update profile details.
+-   **Secure Storage**: Securely store authentication tokens using `expo-secure-store`.
+-   **Responsive Design**: Built with NativeWind for a consistent look across Android, iOS, and Web.
+-   **Animations**: engaging UI transitions using `react-native-reanimated`.
 
-   ```bash
-   npm install
-   ```
+## 🛠 Tech Stack
 
-2. Start the app
+-   **Framework**: [Expo](https://expo.dev/) (SDK 50+)
+-   **Language**: [TypeScript](https://www.typescriptlang.org/)
+-   **Styling**: [NativeWind](https://www.nativewind.dev/) (Tailwind CSS for React Native)
+-   **Authentication**: [Clerk](https://clerk.com/)
+-   **Routing**: [Expo Router](https://docs.expo.dev/router/introduction/)
+-   **Icons**: [Expo Vector Icons](https://icons.expo.fyi/)
+-   **Animations**: [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
 
-   ```bash
-   npx expo start
-   ```
+## 📋 Prerequisites
 
-In the output, you'll find options to open the app in a
+Before you begin, ensure you have the following installed:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+-   [Node.js](https://nodejs.org/) (LTS version recommended)
+-   [Expo Go](https://expo.dev/client) app on your iOS or Android device (for testing).
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📦 Installation
 
-## Get a fresh project
+1.  **Clone the repository**:
 
-When you're ready, run:
+    ```bash
+    git clone <repository-url>
+    cd budget-buddy
+    ```
+
+2.  **Install dependencies**:
+
+    ```bash
+    npm install
+    ```
+
+## ⚙️ Configuration
+
+1.  Create a `.env` file in the root directory.
+2.  Add your Clerk Publishable Key and API URL (optional):
+
+    ```env
+    EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+    EXPO_PUBLIC_API_URL=https://ba-6696c75cc6d44a1683979f86653da53a.ecs.ap-south-1.on.aws
+    ```
+
+    > **Note:** You can find your Clerk Publishable Key in your [Clerk Dashboard](https://dashboard.clerk.com/).
+
+## 🏃‍♂️ Running the App
+
+Start the development server:
 
 ```bash
-npm run reset-project
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+-   **Scan the QR code** with the Expo Go app (Android) or Camera app (iOS).
+-   Press `a` to open in Android Emulator.
+-   Press `i` to open in iOS Simulator.
+-   Press `w` to open in Web browser.
 
-## Learn more
+## 📂 Project Structure
 
-To learn more about developing your project with Expo, look at the following resources:
+```
+budget-buddy/
+├── app/                 # Expo Router screens and layouts
+│   ├── (tabs)/          # Tab navigation screens (Dashboard, etc.)
+│   ├── _layout.tsx      # Root layout and providers
+│   ├── index.tsx        # Entry point (redirects to login)
+│   ├── login.tsx        # Login screen
+│   └── signup.tsx       # Signup screen
+├── components/          # Reusable UI components
+├── constants/           # App constants (Colors, Theme, etc.)
+├── hooks/               # Custom React hooks
+├── utils/               # Utility functions (API, etc.)
+└── ...config files
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 🤝 Contributing
 
-## Join the community
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-Join our community of developers creating universal apps.
+## 📄 License
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+This project is licensed under the [MIT License](LICENSE).
