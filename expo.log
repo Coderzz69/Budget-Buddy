@@ -1,0 +1,7 @@
+env: load .env
+env: export EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY EXPO_PUBLIC_API_URL
+Starting project at /home/coderzz69/Desktop/Budget_Buddy_app/budget-buddy
+React Compiler enabled
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.

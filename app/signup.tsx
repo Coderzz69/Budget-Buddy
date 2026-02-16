@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown, SlideInRight } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-import { syncUser } from '../utils/api';
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -77,10 +76,11 @@ export default function SignupScreen() {
             });
         } catch (err: any) {
             console.error('Signup error:', JSON.stringify(err, null, 2));
+            const errorMessage = err.errors?.[0]?.message || 'Signup failed';
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: err.errors?.[0]?.message || 'Signup failed'
+                message: errorMessage.includes('CAPTCHA') ? errorMessage + '\n\n(If you are on Web, please disable AdBlockers)' : errorMessage
             });
         } finally {
             setLoading(false);
@@ -112,29 +112,14 @@ export default function SignupScreen() {
                 await setActive({ session: completeSignUp.createdSessionId });
                 console.log('Session set active.');
 
-                // Sync user to database (fire and forget)
-                const token = completeSignUp.createdSessionId;
-                if (token) {
-                    console.log('Syncing user to backend...');
-                    syncUser(token, { email, firstName, lastName, username, currency }).then(() => {
-                        console.log('User synced to backend successfully.');
-                    }).catch(err => {
-                        console.error('Background sync failed:', err);
-                    });
-                }
-
                 setAlertConfig({
                     visible: true,
                     title: 'Success',
                     message: 'Email verified successfully!',
                 });
 
-                // Fallback redirect if _layout doesn't pick it up fast enough
-                if (isLoaded) {
-                    setTimeout(() => {
-                        router.replace('/dashboard');
-                    }, 500);
-                }
+                // Explicitly redirect to dashboard
+                router.replace('/(tabs)/dashboard');
             } else {
                 console.error('Signup status not complete:', completeSignUp.status);
                 // @ts-ignore
@@ -292,7 +277,7 @@ export default function SignupScreen() {
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
-                                    colors={['#00E0FF', '#00FFA3']}
+                                    colors={['#F97316', '#FB923C']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.button}
@@ -358,7 +343,7 @@ export default function SignupScreen() {
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
-                                    colors={['#00E0FF', '#00FFA3']}
+                                    colors={['#F97316', '#FB923C']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.button}
@@ -485,7 +470,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     signupText: {
-        color: '#00E0FF',
+        color: '#F97316',
         fontWeight: 'bold',
         fontSize: 14,
     },
@@ -513,8 +498,8 @@ const styles = StyleSheet.create({
         borderColor: '#333',
     },
     otpBoxActive: {
-        borderColor: '#00E0FF',
-        shadowColor: "#00E0FF",
+        borderColor: '#F97316',
+        shadowColor: "#F97316",
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -535,7 +520,7 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     resendText: {
-        color: '#00E0FF',
+        color: '#F97316',
         fontWeight: 'bold',
         fontSize: 14,
     },
@@ -552,8 +537,8 @@ const styles = StyleSheet.create({
         borderColor: '#333',
     },
     currencyChipActive: {
-        backgroundColor: '#00E0FF',
-        borderColor: '#00E0FF',
+        backgroundColor: '#F97316',
+        borderColor: '#F97316',
     },
     currencyText: {
         color: '#ccc',

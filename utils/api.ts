@@ -1,13 +1,17 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://ba-6696c75cc6d44a1683979f86653da53a.ecs.ap-south-1.on.aws';
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+if (!API_URL) {
+    throw new Error('Missing API URL. Please set EXPO_PUBLIC_API_URL in your .env or EAS secrets.');
+}
 
 class ApiClient {
     private baseURL: string;
 
     constructor() {
-        this.baseURL = API_URL;
+        this.baseURL = API_URL as string;
     }
 
     async getToken() {
@@ -41,7 +45,7 @@ class ApiClient {
             ...(options.headers as Record<string, string>),
         };
 
-        if (token) {
+        if (!headers['Authorization'] && token) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
@@ -77,10 +81,33 @@ class ApiClient {
         }
     }
 
-    async post(endpoint: string, body: any) {
+    async get(endpoint: string, options: RequestInit = {}) {
         return this.request(endpoint, {
+            ...options,
+            method: 'GET',
+        });
+    }
+
+    async post(endpoint: string, body: any, options: RequestInit = {}) {
+        return this.request(endpoint, {
+            ...options,
             method: 'POST',
             body: JSON.stringify(body),
+        });
+    }
+
+    async put(endpoint: string, body: any, options: RequestInit = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'PUT',
+            body: JSON.stringify(body),
+        });
+    }
+
+    async delete(endpoint: string, options: RequestInit = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'DELETE',
         });
     }
 }
