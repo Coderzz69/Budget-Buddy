@@ -86,7 +86,7 @@ export default function CompleteProfileScreen() {
     if (!isLoaded) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#00E0FF" />
+                <ActivityIndicator size="large" color="#F97316" />
             </View>
         );
     }
@@ -154,7 +154,7 @@ export default function CompleteProfileScreen() {
                         activeOpacity={0.8}
                     >
                         <LinearGradient
-                            colors={['#00E0FF', '#00FFA3']}
+                            colors={['#F97316', '#FB923C']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={styles.button}
