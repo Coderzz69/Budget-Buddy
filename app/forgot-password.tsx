@@ -158,7 +158,7 @@ export default function ForgotPasswordScreen() {
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
-                                    colors={['#00E0FF', '#00FFA3']}
+                                    colors={['#F97316', '#FB923C']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.button}
@@ -239,7 +239,7 @@ export default function ForgotPasswordScreen() {
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
-                                    colors={['#00E0FF', '#00FFA3']}
+                                    colors={['#F97316', '#FB923C']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.button}
@@ -255,7 +255,7 @@ export default function ForgotPasswordScreen() {
                     )}
 
                     <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={20} color="#00E0FF" />
+                        <Ionicons name="arrow-back" size={20} color="#F97316" />
                         <Text style={styles.backButtonText}>Back to Sign In</Text>
                     </TouchableOpacity>
 
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     backButtonText: {
-        color: '#00E0FF',
+        color: '#F97316',
         fontWeight: 'bold',
         fontSize: 14,
     },
@@ -387,8 +387,8 @@ const styles = StyleSheet.create({
         borderColor: '#333',
     },
     otpBoxActive: {
-        borderColor: '#00E0FF',
-        shadowColor: "#00E0FF",
+        borderColor: '#F97316',
+        shadowColor: "#F97316",
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
