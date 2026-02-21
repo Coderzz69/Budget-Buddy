@@ -16,6 +16,8 @@ export function DateNavigator({ date, onPrev, onNext }: DateNavigatorProps) {
     const theme = Colors[colorScheme ?? 'light'];
 
     const formattedDate = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const today = new Date();
+    const isLatestMonth = date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
 
     return (
         <GlassView intensity={20} style={styles.container}>
@@ -27,9 +29,15 @@ export function DateNavigator({ date, onPrev, onNext }: DateNavigatorProps) {
                 <Text style={[styles.dateText, { color: theme.text }]}>{formattedDate}</Text>
             </View>
 
-            <TouchableOpacity onPress={onNext} style={styles.button}>
-                <IconSymbol name="chevron.right" size={20} color={theme.text} />
-            </TouchableOpacity>
+            {isLatestMonth ? (
+                <View style={[styles.button, { opacity: 0 }]} pointerEvents="none">
+                    <IconSymbol name="chevron.right" size={20} color={theme.text} />
+                </View>
+            ) : (
+                <TouchableOpacity onPress={onNext} style={styles.button}>
+                    <IconSymbol name="chevron.right" size={20} color={theme.text} />
+                </TouchableOpacity>
+            )}
         </GlassView>
     );
 }
