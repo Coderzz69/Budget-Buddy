@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { dataService, Account } from '../../utils/dataService';
 import { Colors } from '../../constants/theme';
 import { useColorScheme } from '../../hooks/use-color-scheme';
@@ -35,7 +35,22 @@ export default function AddTransactionScreen() {
     });
 
     const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-    const [dynamicCategories, setDynamicCategories] = useState<{ id: string, name: string, icon: string, type: 'expense' | 'income' }[]>([]);
+    const [dynamicCategories, setDynamicCategories] = useState<{ id: string, name: string, icon: string, color?: string, type: 'expense' | 'income' | 'both' }[]>([]);
+
+    const [editCategoryModalVisible, setEditCategoryModalVisible] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<{ id: string, name: string, icon: string, color?: string } | null>(null);
+
+    const ICON_OPTIONS = [
+        'tag.fill', 'cart.fill', 'house.fill', 'car.fill', 'bolt.fill', 'heart.fill', 'book.fill', 'gamecontroller.fill',
+        'wineglass.fill', 'bag.fill', 'dollarsign.circle.fill', 'chart.pie.fill', 'gift.fill', 'airplane',
+        'desktopcomputer', 'briefcase.fill', 'graduationcap.fill', 'cross.case.fill', 'pawprint.fill', 'flame.fill'
+    ];
+
+    const COLOR_OPTIONS = [
+        '#EF4444', '#F97316', '#F59E0B', '#84CC16', '#22C55E', '#10B981',
+        '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6',
+        '#A855F7', '#D946EF', '#EC4899', '#F43F5E', '#94A3B8'
+    ];
 
     const STATIC_CATEGORIES = [
         { id: '1', name: 'Salary', icon: 'dollarsign.circle.fill', type: 'income' },
@@ -58,24 +73,53 @@ export default function AddTransactionScreen() {
         const init = async () => {
             try {
                 // Load account and transactions for dynamic categories
-                const [defaultAccount, existingTransactions] = await Promise.all([
+                const [defaultAccount, existingTransactions, fetchedCategories] = await Promise.all([
                     dataService.ensureDefaultAccount(),
-                    dataService.getTransactions()
+                    dataService.getTransactions(),
+                    dataService.getCategories()
                 ]);
                 setAccount(defaultAccount);
 
                 // Extract unique dynamic categories
                 const staticNames = new Set(STATIC_CATEGORIES.map(c => c.name));
-                const customCats = new Map<string, { id: string, name: string, icon: string, type: 'expense' | 'income' }>();
+                const customCats = new Map<string, { id: string, name: string, icon: string, color?: string, type: 'expense' | 'income' | 'both' }>();
 
+                // First load explicit custom categories from the backend
+                fetchedCategories.forEach((c: any) => {
+                    if (!staticNames.has(c.name)) {
+                        // Attempt to deduce the type from existing transactions. If it's used for income, mark it as income. 
+                        // If used for both, marking it as 'both' would require more complex filtering, so we check if any income tx exists.
+                        const hasIncome = existingTransactions.some(t => t.category === c.name && t.type === 'income');
+                        const hasExpense = existingTransactions.some(t => t.category === c.name && t.type === 'expense');
+
+                        // Default to the current view type if it has no transactions yet so it shows up everywhere until used
+                        const deducedType = hasIncome && !hasExpense ? 'income' : hasExpense && !hasIncome ? 'expense' : 'both';
+
+                        customCats.set(c.name, {
+                            id: c.id,
+                            name: c.name,
+                            icon: c.icon || 'tag',
+                            color: c.color,
+                            type: deducedType as any
+                        });
+                    }
+                });
+
+                // Then fall back to transaction scanning for any orphans
                 existingTransactions.forEach(t => {
                     if (!staticNames.has(t.category)) {
-                        customCats.set(t.category, {
-                            id: `custom-${t.category}`,
-                            name: t.category,
-                            icon: 'tag', // Generic icon for custom categories
-                            type: t.type as 'expense' | 'income' // Assume type matches transaction type
-                        });
+                        const existingCat = customCats.get(t.category);
+                        if (!existingCat) {
+                            customCats.set(t.category, {
+                                id: `custom-${t.category}`,
+                                name: t.category,
+                                icon: 'tag',
+                                type: t.type as 'expense' | 'income' | 'both'
+                            });
+                        } else if ((existingCat.type as string) !== 'both' && existingCat.type !== t.type) {
+                            // If we found conflicting transaction types later on for an orphan, mark it as both
+                            customCats.set(t.category, { ...existingCat, type: 'both' as any });
+                        }
                     }
                 });
                 setDynamicCategories(Array.from(customCats.values()));
@@ -103,7 +147,21 @@ export default function AddTransactionScreen() {
             }
         };
         init();
-    }, [id]);
+    }, [id, isEditing]);
+
+    useFocusEffect(
+        useCallback(() => {
+            // If the user navigates here via the Tab bar (no ID) while an old ID was present,
+            // or we just want to ensure a clean slate for a new translation, reset the form.
+            if (!id && !isEditing) {
+                setAmount('');
+                setCategory('');
+                setDate(new Date().toISOString().split('T')[0]);
+                setNote('');
+                setType('expense');
+            }
+        }, [id, isEditing])
+    );
 
     const handleSubmit = async () => {
         if (!amount || !category) {
@@ -156,6 +214,78 @@ export default function AddTransactionScreen() {
         }
     };
 
+    const handleSaveCategory = async () => {
+        if (!editingCategory) return;
+        setLoading(true);
+        try {
+            // Check if it's a real custom category or just a local placeholder
+            if (!editingCategory.id.startsWith('custom-')) {
+                await dataService.updateCategory(editingCategory.id, {
+                    name: editingCategory.name,
+                    icon: editingCategory.icon,
+                    color: editingCategory.color || '#38BDF8',
+                });
+
+                // Update local state for immediate feedback
+                setDynamicCategories(prev => prev.map(c =>
+                    c.id === editingCategory.id ? { ...c, ...editingCategory } as any : c
+                ));
+
+                // If the user renamed the currently selected category, update the `category` text state so it stays selected
+                if (category === editingCategory.id.replace('custom-', '') ||
+                    dynamicCategories.find(c => c.id === editingCategory.id)?.name === category) {
+                    setCategory(editingCategory.name);
+                }
+            } else {
+                setAlertConfig({ visible: true, title: 'Notice', message: 'Cannot edit automatically generated placeholder categories. Please assign them a real transaction first.' });
+            }
+            setEditCategoryModalVisible(false);
+        } catch (error) {
+            console.error('Failed to save category:', error);
+            setAlertConfig({ visible: true, title: 'Error', message: 'Failed to update category.' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteCategory = async () => {
+        if (!editingCategory) return;
+
+        // Use a generic logic flow instead of an actual Alert since Alert is strictly iOS/Android native
+        // and we have a custom CustomAlert component. For simplicity, we directly invoke CustomAlert state.
+
+        setAlertConfig({
+            visible: true,
+            title: 'Delete Category',
+            message: 'Are you sure you want to delete this custom category? It will be removed permanently.',
+            onPress: async () => {
+                setAlertConfig({ ...alertConfig, visible: false }); // Hide alert
+                setLoading(true);
+                try {
+                    if (!editingCategory.id.startsWith('custom-')) {
+                        await dataService.deleteCategory(editingCategory.id);
+
+                        // Update local State
+                        setDynamicCategories(prev => prev.filter(c => c.id !== editingCategory.id));
+
+                        // Clear selection if deleted
+                        if (category === editingCategory.name) {
+                            setCategory('');
+                        }
+                    } else {
+                        setAlertConfig({ visible: true, title: 'Notice', message: 'Placeholder categories are deleted by deleting their underlying transactions.' });
+                    }
+                    setEditCategoryModalVisible(false);
+                } catch (error) {
+                    console.error('Failed to delete category:', error);
+                    setAlertConfig({ visible: true, title: 'Error', message: 'Failed to delete category. Ensure it is not in use.' });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>{isEditing ? 'Edit Transaction' : 'Add Transaction'}</Text>
@@ -163,7 +293,10 @@ export default function AddTransactionScreen() {
             <View style={styles.typeContainer}>
                 <TouchableOpacity
                     style={styles.typeButtonWrapper}
-                    onPress={() => setType('expense')}
+                    onPress={() => {
+                        setType('expense');
+                        setCategory('');
+                    }}
                 >
                     <GlassView
                         intensity={type === 'expense' ? 40 : 10}
@@ -181,7 +314,10 @@ export default function AddTransactionScreen() {
 
                 <TouchableOpacity
                     style={styles.typeButtonWrapper}
-                    onPress={() => setType('income')}
+                    onPress={() => {
+                        setType('income');
+                        setCategory('');
+                    }}
                 >
                     <GlassView
                         intensity={type === 'income' ? 40 : 10}
@@ -306,9 +442,11 @@ export default function AddTransactionScreen() {
                 transparent={true}
                 visible={categoryModalVisible}
                 onRequestClose={() => setCategoryModalVisible(false)}
+                statusBarTranslucent={true}
+                navigationBarTranslucent={true}
             >
-                <View style={styles.modalOverlay}>
-                    <GlassView intensity={95} style={styles.modalContent}>
+                <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setCategoryModalVisible(false)}>
+                    <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#0F172A' : '#FFFFFF' }]}>
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: theme.text }]}>Select Category</Text>
                             <TouchableOpacity onPress={() => setCategoryModalVisible(false)} style={styles.closeButton}>
@@ -317,48 +455,203 @@ export default function AddTransactionScreen() {
                         </View>
 
                         <FlatList
-                            data={[...STATIC_CATEGORIES, ...dynamicCategories].filter(c => c.type === type || c.name === 'Others')} // Optional: filter by type
+                            data={[
+                                ...STATIC_CATEGORIES.filter(c => c.name !== 'Others'),
+                                ...dynamicCategories,
+                                ...STATIC_CATEGORIES.filter(c => c.name === 'Others')
+                            ].filter(c => c.type === type || c.type === 'both' || c.name === 'Others')} // Optional: filter by type
                             keyExtractor={(item) => item.id}
                             numColumns={2}
-                            columnWrapperStyle={{ justifyContent: 'space-between', gap: 12 }}
+                            columnWrapperStyle={{ justifyContent: 'space-between', gap: 12, paddingHorizontal: 20 }}
                             contentContainerStyle={{ paddingBottom: 20 }}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[
-                                        styles.categoryItem,
-                                        {
-                                            backgroundColor: category === item.name
-                                                ? (type === 'income' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(249, 115, 22, 0.2)')
-                                                : 'rgba(255,255,255,0.05)',
-                                            borderColor: category === item.name
-                                                ? (type === 'income' ? theme.income : theme.expense)
-                                                : 'rgba(255,255,255,0.1)',
-                                        }
-                                    ]}
-                                    onPress={() => {
-                                        setCategory(item.name);
-                                        setCategoryModalVisible(false);
-                                    }}
-                                >
-                                    <IconSymbol
-                                        name={item.icon as any}
-                                        size={24}
-                                        color={category === item.name
-                                            ? (type === 'income' ? theme.income : theme.expense)
-                                            : theme.text}
-                                        style={{ marginBottom: 8 }}
-                                    />
-                                    <Text style={[
-                                        styles.categoryText,
-                                        { color: theme.text, fontWeight: category === item.name ? '700' : '400' }
-                                    ]}>
-                                        {item.name}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
+                            renderItem={({ item }: { item: { id: string, name: string, icon: string, type: string, color?: string } }) => {
+                                const isSelected = category === item.name;
+
+                                // Generate a unique vibrant color based on category name
+                                const getCategoryColor = (name: string, isDark: boolean) => {
+                                    const palette = isDark
+                                        ? ['#38BDF8', '#34D399', '#F472B6', '#FCD34D', '#A78BFA', '#FB7185', '#2DD4BF']
+                                        : ['#0284C7', '#059669', '#DB2777', '#D97706', '#7C3AED', '#E11D48', '#0D9488'];
+                                    let hash = 0;
+                                    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                                    return palette[Math.abs(hash) % palette.length];
+                                };
+                                const activeColor = item.color || getCategoryColor(item.name, colorScheme === 'dark');
+
+                                return (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.categoryItem,
+                                            {
+                                                backgroundColor: isSelected
+                                                    ? activeColor + '33' // 20% opacity hex
+                                                    : (colorScheme === 'light' ? '#FFFFFF' : 'rgba(255,255,255,0.05)'),
+                                                borderColor: isSelected
+                                                    ? activeColor
+                                                    : (colorScheme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.1)'),
+                                            }
+                                        ]}
+                                        onPress={() => {
+                                            if (isSelected) {
+                                                // Second tap (already selected): confirm and close
+                                                setCategoryModalVisible(false);
+                                            } else {
+                                                // First tap: select it
+                                                setCategory(item.name);
+                                            }
+                                        }}
+                                        onLongPress={() => {
+                                            // Only allow editing dynamic custom categories
+                                            if (!STATIC_CATEGORIES.some(c => c.name === item.name)) {
+                                                setEditingCategory({
+                                                    id: item.id,
+                                                    name: item.name,
+                                                    icon: item.icon,
+                                                    color: item.color || activeColor
+                                                });
+                                                setEditCategoryModalVisible(true);
+                                            }
+                                        }}
+                                    >
+                                        <IconSymbol
+                                            name={item.icon as any}
+                                            size={24}
+                                            color={isSelected ? activeColor : theme.text}
+                                            style={{ marginBottom: 8 }}
+                                        />
+                                        <Text style={[
+                                            styles.categoryText,
+                                            { color: theme.text, fontWeight: isSelected ? '700' : '400' }
+                                        ]}>
+                                            {item.name}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )
+                            }}
                         />
-                    </GlassView>
-                </View>
+                    </TouchableOpacity>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* Edit Category Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={editCategoryModalVisible}
+                onRequestClose={() => setEditCategoryModalVisible(false)}
+                statusBarTranslucent={true}
+                navigationBarTranslucent={true}
+            >
+                <TouchableOpacity style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]} activeOpacity={1} onPress={() => setEditCategoryModalVisible(false)}>
+                    <TouchableOpacity activeOpacity={1} style={[styles.modalContent, { backgroundColor: colorScheme === 'dark' ? '#0F172A' : '#FFFFFF', paddingBottom: 30 }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { margin: 0, color: theme.text }]}>Edit Category</Text>
+                            <TouchableOpacity onPress={() => setEditCategoryModalVisible(false)} style={styles.closeButton}>
+                                <IconSymbol name="xmark.circle.fill" size={24} color={theme.icon} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {editingCategory && (
+                            <ScrollView style={{ paddingHorizontal: 20 }}>
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={[styles.label, { color: theme.text, marginBottom: 8 }]}>Name</Text>
+                                    <GlassView intensity={20} style={[styles.inputContainer, { marginBottom: 0 }]}>
+                                        <TextInput
+                                            style={[styles.input, { color: theme.text }]}
+                                            value={editingCategory.name}
+                                            onChangeText={(text) => setEditingCategory({ ...editingCategory, name: text })}
+                                            placeholder="Category Name"
+                                            placeholderTextColor={theme.icon}
+                                        />
+                                    </GlassView>
+                                </View>
+
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={[styles.label, { color: theme.text, marginBottom: 8 }]}>Icon</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                                        {ICON_OPTIONS.map(icon => (
+                                            <TouchableOpacity
+                                                key={icon}
+                                                onPress={() => setEditingCategory({ ...editingCategory, icon })}
+                                                style={{
+                                                    padding: 12,
+                                                    borderRadius: 12,
+                                                    backgroundColor: editingCategory.icon === icon ? (editingCategory.color || theme.tint) + '33' : (colorScheme === 'dark' ? '#1E293B' : '#F1F5F9'),
+                                                    borderWidth: 1,
+                                                    borderColor: editingCategory.icon === icon ? (editingCategory.color || theme.tint) : 'transparent',
+                                                }}
+                                            >
+                                                <IconSymbol
+                                                    name={icon as any}
+                                                    size={24}
+                                                    color={editingCategory.icon === icon ? (editingCategory.color || theme.tint) : theme.icon}
+                                                />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+
+                                <View style={{ marginBottom: 30 }}>
+                                    <Text style={[styles.label, { color: theme.text, marginBottom: 8 }]}>Color (Select or Hex)</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+                                        {COLOR_OPTIONS.map(color => (
+                                            <TouchableOpacity
+                                                key={color}
+                                                onPress={() => setEditingCategory({ ...editingCategory, color })}
+                                                style={{
+                                                    width: 40,
+                                                    height: 40,
+                                                    borderRadius: 20,
+                                                    backgroundColor: color,
+                                                    borderWidth: 3,
+                                                    borderColor: editingCategory.color === color ? theme.text : 'transparent',
+                                                    shadowColor: color,
+                                                    shadowOffset: { width: 0, height: 2 },
+                                                    shadowOpacity: 0.3,
+                                                    shadowRadius: 4,
+                                                    elevation: 2,
+                                                }}
+                                            />
+                                        ))}
+                                    </View>
+                                    <GlassView intensity={20} style={[styles.inputContainer, { marginBottom: 0 }]}>
+                                        <Text style={[styles.currencyPrefix, { color: theme.icon, fontSize: 16 }]}>#</Text>
+                                        <TextInput
+                                            style={[styles.input, { color: theme.text }]}
+                                            value={editingCategory.color?.replace('#', '')}
+                                            onChangeText={(text) => setEditingCategory({ ...editingCategory, color: `#${text}` })}
+                                            placeholder="HEX Color Code"
+                                            placeholderTextColor={theme.icon}
+                                            maxLength={6}
+                                        />
+                                    </GlassView>
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.submitButton, { backgroundColor: theme.tint, width: '100%', borderRadius: 16, marginBottom: 12 }]}
+                                    onPress={handleSaveCategory}
+                                    disabled={loading}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text style={styles.submitButtonText}>Save Changes</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                {!editingCategory.id.startsWith('custom-') && (
+                                    <TouchableOpacity
+                                        style={[styles.submitButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#EF4444', width: '100%', borderRadius: 16 }]}
+                                        onPress={handleDeleteCategory}
+                                        disabled={loading}
+                                    >
+                                        <Text style={[styles.submitButtonText, { color: '#EF4444' }]}>Delete Category</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </ScrollView>
+                        )}
+                    </TouchableOpacity>
+                </TouchableOpacity>
             </Modal>
         </ScrollView>
     );
@@ -371,6 +664,7 @@ const styles = StyleSheet.create({
     contentContainer: {
         padding: 20,
         paddingTop: 60,
+        paddingBottom: 120, // Added padding to prevent Other input from overlapping the save button under the tab bar
     },
     headerTitle: {
         fontSize: 32,
@@ -451,17 +745,15 @@ const styles = StyleSheet.create({
     },
     modalContent: {
         width: '100%',
-        borderRadius: 20,
-        padding: 20,
+        borderRadius: 24,
         maxHeight: '80%',
         shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 10,
+        overflow: 'hidden',
+        flexShrink: 1,
     },
     modalTitle: {
         fontSize: 20,
@@ -479,7 +771,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 20,
+        padding: 20,
+        paddingBottom: 16,
     },
     closeButton: {
         padding: 4,
@@ -492,6 +785,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         borderWidth: 1,
         marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 0, // Removed elevation to fix Android dark smudge
     },
     categoryText: {
         fontSize: 14,
