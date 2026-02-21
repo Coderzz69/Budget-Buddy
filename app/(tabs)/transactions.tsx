@@ -78,18 +78,21 @@ export default function TransactionsScreen() {
         return (
             <Animated.View
                 entering={FadeInDown.delay(index * 50).springify()}
-                style={styles.itemWrapper}
+                style={[styles.itemWrapper, {
+                    backgroundColor: colorScheme === 'dark' ? '#020617' : '#F8FAFC',
+                    borderRadius: 24,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: colorScheme === 'light' ? 0.02 : 0.08,
+                    shadowRadius: 4,
+                    elevation: colorScheme === 'light' ? 1 : 3,
+                }]}
             >
                 <GlassView intensity={60} tint="default" style={[styles.transactionCard, {
                     backgroundColor: colorScheme === 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.05)',
                     borderWidth: 1,
                     borderColor: colorScheme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: colorScheme === 'light' ? 0.05 : 0.1,
-                    shadowRadius: 12,
-                    elevation: 5,
-                    transform: [{ translateY: -2 }]
+                    overflow: 'hidden'
                 }]}>
                     <View style={[styles.iconContainer, { backgroundColor: isIncome ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)' }]}>
                         <IconSymbol
@@ -218,13 +221,13 @@ const styles = StyleSheet.create({
     transactionCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 20,
+        padding: 12,
+        borderRadius: 24,
     },
     iconContainer: {
-        padding: 12,
-        borderRadius: 14,
-        marginRight: 16,
+        padding: 10,
+        borderRadius: 16,
+        marginRight: 12,
     },
     detailsContainer: {
         flex: 1,

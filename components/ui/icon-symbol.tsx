@@ -17,6 +17,7 @@ const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
+  'chevron.left': 'chevron-left',
   'chevron.right': 'chevron-right',
   'chevron.down': 'keyboard-arrow-down',
   'list.bullet.rectangle.fill': 'list',
@@ -50,6 +51,17 @@ const MAPPING = {
   'circle.grid.2x2.fill': 'dashboard',
   'wineglass.fill': 'local-bar',
   'tag': 'local-offer',
+  'tag.fill': 'local-offer',
+  'moon.fill': 'dark-mode',
+  'sun.max.fill': 'light-mode',
+  'gift.fill': 'card-giftcard',
+  'airplane': 'flight',
+  'desktopcomputer': 'computer',
+  'briefcase.fill': 'work',
+  'graduationcap.fill': 'school',
+  'cross.case.fill': 'medical-services',
+  'pawprint.fill': 'pets',
+  'flame.fill': 'local-fire-department',
 } as IconMapping;
 
 /**
