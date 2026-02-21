@@ -33,6 +33,7 @@ export const dataService = {
         const data = await api.get('/transactions', options);
         return data.map((t: any) => ({
             ...t,
+            description: t.note || t.description,
             category: t.category?.name || 'Uncategorized',
             amount: Number(t.amount),
             date: t.occurredAt
@@ -49,7 +50,7 @@ export const dataService = {
     }, token?: string): Promise<Transaction> => {
         const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         const response = await api.post('/transactions', data, options);
-        return { ...response, amount: Number(response.amount) };
+        return { ...response, amount: Number(response.amount), description: response.note || response.description };
     },
 
     updateTransaction: async (id: string, data: {
@@ -62,7 +63,7 @@ export const dataService = {
     }, token?: string): Promise<Transaction> => {
         const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         const response = await api.put(`/transactions/${id}`, data, options);
-        return { ...response, amount: Number(response.amount) };
+        return { ...response, amount: Number(response.amount), description: response.note || response.description };
     },
 
     deleteTransaction: async (id: string, token?: string): Promise<void> => {
@@ -101,8 +102,18 @@ export const dataService = {
         return dataService.createAccount({ name: 'Main Wallet', type: 'cash' }, token);
     },
 
-    getCategories: async (token?: string): Promise<{ id: string, name: string, icon: string }[]> => {
+    getCategories: async (token?: string): Promise<{ id: string, name: string, icon: string, color?: string }[]> => {
         const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
         return api.get('/categories', options);
+    },
+
+    updateCategory: async (id: string, data: { name: string, icon: string, color: string }, token?: string): Promise<{ message: string }> => {
+        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        return api.put(`/categories/${id}`, data, options);
+    },
+
+    deleteCategory: async (id: string, token?: string): Promise<{ message: string }> => {
+        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+        return api.delete(`/categories/${id}`, options);
     }
 };

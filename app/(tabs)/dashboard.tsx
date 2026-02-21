@@ -85,18 +85,21 @@ export default function DashboardScreen() {
         return (
             <Animated.View
                 entering={FadeInDown.delay(index * 100).springify()}
-                style={styles.transactionWrapper}
+                style={[styles.transactionWrapper, {
+                    backgroundColor: theme.background === '#020617' ? '#020617' : '#F8FAFC',
+                    borderRadius: 24,
+                    shadowColor: theme.shadow,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: theme.background === '#020617' ? 0.15 : 0.05,
+                    shadowRadius: 4,
+                    elevation: theme.background === '#020617' ? 5 : 1,
+                }]}
             >
                 <GlassView intensity={80} tint={theme.background === '#020617' ? "dark" : "light"} style={[styles.transactionItem, {
                     backgroundColor: theme.background === '#020617' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)',
                     borderWidth: 1,
                     borderColor: theme.background === '#020617' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.4)',
-                    shadowColor: theme.shadow,
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 20,
-                    elevation: 10,
-                    transform: [{ translateY: -2 }]
+                    overflow: 'hidden'
                 }]}>
                     <View style={[styles.iconContainer, { backgroundColor: isIncome ? 'rgba(74, 222, 128, 0.15)' : 'rgba(248, 113, 113, 0.15)' }]}>
                         <IconSymbol
@@ -127,13 +130,13 @@ export default function DashboardScreen() {
                         </Text>
                         <View style={{ flexDirection: 'row', gap: 12 }}>
                             <TouchableOpacity
-                                style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
+                                style={[styles.iconButton, { backgroundColor: theme.background === '#020617' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
                                 onPress={() => router.push({ pathname: '/(tabs)/add', params: { id: item.id } })}
                             >
                                 <IconSymbol name="pencil" size={14} color={theme.text} />
                             </TouchableOpacity>
                             <TouchableOpacity
-                                style={[styles.iconButton, { backgroundColor: 'rgba(244, 63, 94, 0.1)' }]}
+                                style={[styles.iconButton, { backgroundColor: theme.background === '#020617' ? 'rgba(244, 63, 94, 0.15)' : 'rgba(244, 63, 94, 0.1)' }]}
                                 onPress={() => handleDelete(item.id)}
                             >
                                 <IconSymbol name="trash" size={14} color={theme.expense} />
@@ -228,36 +231,33 @@ export default function DashboardScreen() {
 
                 {/* Quick Actions - Glass Style */}
                 <View style={styles.actionRow}>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/add')}>
-                        <GlassView intensity={50} style={styles.actionGlass}>
-                            <LinearGradient
-                                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-                                style={StyleSheet.absoluteFill}
-                            />
-                            <IconSymbol name="plus" size={28} color={theme.text} />
-                            <Text style={[styles.actionText, { color: theme.text }]}>Add</Text>
-                        </GlassView>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/budget')}>
-                        <GlassView intensity={50} style={styles.actionGlass}>
-                            <LinearGradient
-                                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-                                style={StyleSheet.absoluteFill}
-                            />
-                            <IconSymbol name="chart.pie.fill" size={28} color={theme.text} />
-                            <Text style={[styles.actionText, { color: theme.text }]}>Budget</Text>
-                        </GlassView>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={() => router.push('/(tabs)/transactions')}>
-                        <GlassView intensity={50} style={styles.actionGlass}>
-                            <LinearGradient
-                                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-                                style={StyleSheet.absoluteFill}
-                            />
-                            <IconSymbol name="list.bullet.rectangle.fill" size={28} color={theme.text} />
-                            <Text style={[styles.actionText, { color: theme.text }]}>History</Text>
-                        </GlassView>
-                    </TouchableOpacity>
+                    <Animated.View style={[styles.actionButton, { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme.background === '#020617' ? 0.2 : 0.08, shadowRadius: 4, elevation: theme.background === '#020617' ? 4 : 1, backgroundColor: theme.background === '#020617' ? '#020617' : '#F8FAFC' }]}>
+                        <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/(tabs)/add')}>
+                            <GlassView intensity={50} style={styles.actionGlass}>
+                                <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} style={StyleSheet.absoluteFill} />
+                                <IconSymbol name="plus" size={28} color={theme.text} />
+                                <Text style={[styles.actionText, { color: theme.text }]}>Add</Text>
+                            </GlassView>
+                        </TouchableOpacity>
+                    </Animated.View>
+                    <Animated.View style={[styles.actionButton, { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme.background === '#020617' ? 0.2 : 0.08, shadowRadius: 4, elevation: theme.background === '#020617' ? 4 : 1, backgroundColor: theme.background === '#020617' ? '#020617' : '#F8FAFC' }]}>
+                        <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/(tabs)/budget')}>
+                            <GlassView intensity={50} style={styles.actionGlass}>
+                                <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} style={StyleSheet.absoluteFill} />
+                                <IconSymbol name="chart.pie.fill" size={28} color={theme.text} />
+                                <Text style={[styles.actionText, { color: theme.text }]}>Budget</Text>
+                            </GlassView>
+                        </TouchableOpacity>
+                    </Animated.View>
+                    <Animated.View style={[styles.actionButton, { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: theme.background === '#020617' ? 0.2 : 0.08, shadowRadius: 4, elevation: theme.background === '#020617' ? 4 : 1, backgroundColor: theme.background === '#020617' ? '#020617' : '#F8FAFC' }]}>
+                        <TouchableOpacity style={{ flex: 1 }} onPress={() => router.push('/(tabs)/transactions')}>
+                            <GlassView intensity={50} style={styles.actionGlass}>
+                                <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} style={StyleSheet.absoluteFill} />
+                                <IconSymbol name="list.bullet.rectangle.fill" size={28} color={theme.text} />
+                                <Text style={[styles.actionText, { color: theme.text }]}>History</Text>
+                            </GlassView>
+                        </TouchableOpacity>
+                    </Animated.View>
                 </View>
 
                 {/* Recent Transactions */}
@@ -273,7 +273,7 @@ export default function DashboardScreen() {
                         <Text style={{ textAlign: 'center', marginTop: 20, color: theme.icon }}>No transactions yet.</Text>
                     ) : (
                         transactions.slice(0, 5).map((item, index) => (
-                            <View key={item.id}>
+                            <View key={item.id} style={{ marginBottom: index === Math.min(transactions.length, 5) - 1 ? 100 : 0 }}>
                                 {renderTransactionItem({ item, index })}
                             </View>
                         ))
@@ -373,12 +373,16 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         flex: 1,
+        borderRadius: 24,
     },
     actionGlass: {
         alignItems: 'center',
         paddingVertical: 16,
-        borderRadius: 16,
+        borderRadius: 24,
         gap: 8,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        overflow: 'hidden',
     },
     actionText: {
         fontSize: 12,
@@ -410,13 +414,13 @@ const styles = StyleSheet.create({
     transactionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderRadius: 16,
+        padding: 12,
+        borderRadius: 24,
     },
     iconContainer: {
-        padding: 12,
-        borderRadius: 14,
-        marginRight: 16,
+        padding: 10,
+        borderRadius: 16,
+        marginRight: 12,
     },
     transactionDetails: {
         flex: 1,
