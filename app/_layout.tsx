@@ -1,5 +1,3 @@
-import tokenCache from '@/cache';
-import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -10,70 +8,78 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
-import { syncUser } from '@/utils/api';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
-import { useEffect } from 'react';
-
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-
-if (!publishableKey) {
-  throw new Error(
-    'Missing Publishable Key. Please set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env',
-  )
-}
+import { useEffect, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
+import * as Linking from 'expo-linking';
+import { syncUser } from '@/utils/api';
 
 function InitialLayout() {
-  const { isLoaded, isSignedIn } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme ?? 'light'];
-  const isDark = colorScheme === 'dark';
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    const handleSession = async (session: Session | null) => {
+      setSession(session);
+      if (session) {
+        try {
+          await syncUser(session.access_token, { email: session.user.email });
+        } catch (e) {
+          console.error("Failed to sync user with backend:", e);
+        }
+        setIsRedirecting(false);
+      }
+    };
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session).finally(() => setIsReady(true));
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
+
+    // Helper to safely mark redirecting state with a timeout to prevent deadlocks
+    const handlePotentialDeepLink = (url: string | null) => {
+      if (url && url.includes('access_token')) {
+        setIsRedirecting(true);
+        // Failsafe: if session isn't established within 5 seconds, unlock navigation
+        setTimeout(() => setIsRedirecting(false), 5000);
+      }
+    };
+
+    // Check if the app was opened with a deep link containing an auth token
+    Linking.getInitialURL().then(handlePotentialDeepLink);
+
+    // Catch-all link listener to detect incoming OAuth redirects while app is in memory
+    const sub = Linking.addEventListener('url', (event) => {
+      handlePotentialDeepLink(event.url);
+    });
+
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!isReady || isRedirecting) return; // Wait if we are actively processing a deep link
     if (!rootNavigationState?.key) return;
 
     const inTabsGroup = segments[0] === '(tabs)';
 
-    // If we're authenticated and not in the (tabs) group, we should be redirected there
-    // This handles the case where a user logs in (or signs up) and needs to be moved to the dashboard
-    if (isSignedIn && !inTabsGroup) {
-      router.replace('/dashboard');
+    // If authenticated and trying to access login/signup screen, route to dashboard
+    if (session && !inTabsGroup) {
+      router.replace('/(tabs)/dashboard');
+    } else if (!session && inTabsGroup) {
+      // If NOT signed in but trying to access a protected route
+      router.replace('/login');
     }
-    // REMOVED: strict redirect to login if !isSignedIn. 
-    // This allows the Mock Auth bypass to work for users encountering 2FA blocks.
-    // if (!isSignedIn && inTabsGroup) {
-    //   router.replace('/login');
-    // }
-  }, [isSignedIn, isLoaded, segments, rootNavigationState?.key]);
-
-  const { user } = useUser();
-  const { getToken } = useAuth();
-
-  useEffect(() => {
-    if (isSignedIn && user) {
-      const sync = async () => {
-        try {
-          const token = await getToken();
-          if (token) {
-            await syncUser(token, {
-              email: user.primaryEmailAddress?.emailAddress,
-              firstName: user.firstName || undefined,
-              lastName: user.lastName || undefined,
-              username: user.username || undefined,
-            });
-            console.log('User synced on app launch/auth change');
-          }
-        } catch (error) {
-          console.error('Failed to sync user on launch:', error);
-        }
-      };
-      sync();
-    }
-  }, [isSignedIn, user]);
+  }, [session, isReady, isRedirecting, segments, rootNavigationState?.key]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -94,6 +100,8 @@ function InitialLayout() {
             contentStyle: { backgroundColor: 'transparent' },
             animation: 'fade',
           }}
+          // Handle incoming deep links globally so the router doesn't crash on OAuth return
+          screenLayout={({ children }) => <>{children}</>}
         >
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
@@ -117,10 +125,6 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   return (
-    <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
-      <ClerkLoaded>
-        <InitialLayout />
-      </ClerkLoaded>
-    </ClerkProvider>
+    <InitialLayout />
   );
 }

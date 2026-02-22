@@ -1,4 +1,4 @@
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, ActivityIndicator, Switch, Appearance } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -8,8 +8,7 @@ import { useColorScheme } from '../../hooks/use-color-scheme';
 import { GlassView } from '@/components/ui/GlassView';
 
 export default function ProfileScreen() {
-    const { signOut } = useAuth();
-    const { user } = useUser();
+    const [user, setUser] = useState<any>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const colorScheme = useColorScheme();
@@ -19,6 +18,9 @@ export default function ProfileScreen() {
     useEffect(() => {
         const loadProfile = async () => {
             try {
+                const { data: { user } } = await supabase.auth.getUser();
+                setUser(user);
+
                 const data = await dataService.getUserProfile();
                 setProfile(data);
             } catch (error) {
@@ -49,11 +51,15 @@ export default function ProfileScreen() {
 
             <GlassView intensity={20} style={styles.profileCard}>
                 <Image
-                    source={{ uri: user?.imageUrl || 'https://via.placeholder.com/100' }}
+                    source={{ uri: user?.user_metadata?.avatar_url || 'https://via.placeholder.com/100' }}
                     style={styles.avatar}
                 />
-                <Text style={[styles.name, { color: theme.text }]}>{user?.fullName || 'User Name'}</Text>
-                <Text style={[styles.email, { color: theme.icon }]}>{user?.primaryEmailAddress?.emailAddress || 'user@example.com'}</Text>
+                <Text style={[styles.name, { color: theme.text }]}>
+                    {user?.user_metadata?.first_name
+                        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`
+                        : (user?.user_metadata?.full_name || user?.user_metadata?.name || 'User Name')}
+                </Text>
+                <Text style={[styles.email, { color: theme.icon }]}>{user?.email || 'user@example.com'}</Text>
 
                 {loading ? (
                     <ActivityIndicator size="small" color={theme.tint} style={{ marginTop: 10 }} />
@@ -97,7 +103,7 @@ export default function ProfileScreen() {
                 ))}
             </GlassView>
 
-            <TouchableOpacity style={styles.signOutButton} onPress={() => signOut()}>
+            <TouchableOpacity style={styles.signOutButton} onPress={() => supabase.auth.signOut()}>
                 <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
 

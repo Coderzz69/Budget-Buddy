@@ -1,4 +1,4 @@
-import { useSignUp } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -15,11 +15,9 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-import { syncUser } from '../utils/api';
 
 export default function CompleteProfileScreen() {
     const router = useRouter();
-    const { signUp, setActive, isLoaded } = useSignUp();
 
     const [username, setUsername] = useState('');
     const [firstName, setFirstName] = useState('');
@@ -32,11 +30,14 @@ export default function CompleteProfileScreen() {
     });
 
     useEffect(() => {
-        if (isLoaded && signUp) {
-            setFirstName(signUp.firstName || '');
-            setLastName(signUp.lastName || '');
-        }
-    }, [isLoaded, signUp]);
+        supabase.auth.getUser().then(({ data }) => {
+            if (data.user?.user_metadata) {
+                setFirstName(data.user.user_metadata.first_name || '');
+                setLastName(data.user.user_metadata.last_name || '');
+                setUsername(data.user.user_metadata.username || '');
+            }
+        });
+    }, []);
 
     const onCompleteProfilePress = async () => {
         if (!username || !firstName || !lastName) {
@@ -44,56 +45,40 @@ export default function CompleteProfileScreen() {
             return;
         }
 
-        if (!isLoaded) return;
-
         setLoading(true);
 
         try {
-            await signUp.update({
-                username,
-                firstName,
-                lastName,
+            const { error } = await supabase.auth.updateUser({
+                data: {
+                    username,
+                    first_name: firstName,
+                    last_name: lastName,
+                }
             });
 
-            // Should be complete now usually, unless more steps needed
-            if (signUp.status === 'complete') {
-                await setActive({ session: signUp.createdSessionId });
+            if (error) throw error;
 
-                // Sync to backend
-                const email = signUp.emailAddress || ''; // Should be populated from Google
-                syncUser(signUp.createdSessionId!, { email, firstName, lastName, username }).catch(err => {
-                    console.error('Background sync failed:', err);
-                });
-
-                router.replace('/dashboard');
+            // Sync to backend (optional, if we still do it manually vs webhooks)
+            // But since Supabase handles users, we might just be redirecting to dashboard.
+            // Ensure session exists.
+            const session = await supabase.auth.getSession();
+            if (session.data.session) {
+                router.replace('/(tabs)/dashboard');
             } else {
-                setAlertConfig({ visible: true, title: 'Error', message: 'Profile update failed to complete signup.' });
-                console.error('Signup status:', signUp.status);
+                setAlertConfig({ visible: true, title: 'Error', message: 'No valid session.' });
             }
 
         } catch (err: any) {
-            console.error('Profile completion error:', JSON.stringify(err, null, 2));
+            console.error('Profile completion error:', err.message);
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: err.errors?.[0]?.message || 'Failed to update profile'
+                message: err.message || 'Failed to update profile'
             });
         } finally {
             setLoading(false);
         }
     };
-
-    if (!isLoaded) {
-        return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#F97316" />
-            </View>
-        );
-    }
-
-    // Guard: If no signup in progress, maybe redirect back to login?
-    // But helpful to keep for dev/testing. 
-    // if (!signUp) return <Text>No signup in progress</Text>;
 
     return (
         <KeyboardAvoidingView
