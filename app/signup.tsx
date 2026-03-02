@@ -1,4 +1,4 @@
-import { useSignUp } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -19,7 +19,6 @@ import CustomAlert from '../components/CustomAlert';
 
 export default function SignupScreen() {
     const router = useRouter();
-    const { signUp, setActive, isLoaded } = useSignUp();
 
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -28,7 +27,6 @@ export default function SignupScreen() {
     const [currency, setCurrency] = useState('INR');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [code, setCode] = useState('');
     const [pendingVerification, setPendingVerification] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -50,98 +48,55 @@ export default function SignupScreen() {
             return;
         }
 
-        if (!isLoaded) {
-            return;
-        }
-
         setLoading(true);
 
         try {
             console.log('Creating signup with:', { email, username, firstName, lastName });
-            await signUp.create({
-                emailAddress: email,
+
+            // Register user with Supabase Auth
+            const { data, error } = await supabase.auth.signUp({
+                email,
                 password,
-                username,
-                firstName,
-                lastName,
+                options: {
+                    data: {
+                        first_name: firstName,
+                        last_name: lastName,
+                        username: username,
+                    }
+                }
             });
 
-            await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+            if (error) throw error;
 
+            console.log('Signup success:', data.user?.id);
+
+            // Inform the user to check their email for verification if required by Supabase settings,
+            // or if auto-confirm is enabled, they might be logged in already.
             setPendingVerification(true);
             setAlertConfig({
                 visible: true,
                 title: 'Check Your Email',
-                message: 'We sent you a verification code. Please check your email.',
+                message: 'We sent you a verification link. Please check your email to confirm your account.',
             });
+
+            // Since we can't easily capture the custom code flow without a separate endpoint
+            // or using the OTP methods, we just instruct them to click the link.
+
         } catch (err: any) {
-            console.error('Signup error:', JSON.stringify(err, null, 2));
-            const errorMessage = err.errors?.[0]?.message || 'Signup failed';
+            console.error('Signup error:', err.message);
+            const errorMessage = err.message || 'Signup failed';
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: errorMessage.includes('CAPTCHA') ? errorMessage + '\n\n(If you are on Web, please disable AdBlockers)' : errorMessage
+                message: errorMessage
             });
         } finally {
             setLoading(false);
         }
     };
 
-    const onPressVerify = async () => {
-        if (!code || code.length !== 6) {
-            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter the 6-digit code' });
-            return;
-        }
-
-        if (!isLoaded) {
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            console.log('Attempting verification with code:', code);
-            const completeSignUp = await signUp.attemptEmailAddressVerification({
-                code,
-            });
-            console.log('Verification result status:', completeSignUp.status);
-            console.log('Verification result full:', JSON.stringify(completeSignUp, null, 2));
-
-            if (completeSignUp.status === 'complete') {
-                console.log('Signup complete, setting active session...');
-                await setActive({ session: completeSignUp.createdSessionId });
-                console.log('Session set active.');
-
-                setAlertConfig({
-                    visible: true,
-                    title: 'Success',
-                    message: 'Email verified successfully!',
-                });
-
-                // Explicitly redirect to dashboard
-                router.replace('/(tabs)/dashboard');
-            } else {
-                console.error('Signup status not complete:', completeSignUp.status);
-                // @ts-ignore
-                const missing = completeSignUp.missingFields || completeSignUp.unverifiedFields || [];
-                console.error('Missing/Unverified fields:', JSON.stringify(missing));
-
-                setAlertConfig({
-                    visible: true,
-                    title: 'Signup Incomplete',
-                    message: `Status: ${completeSignUp.status}\nMissing: ${missing.join(', ') || 'Unknown requirements'}`
-                });
-            }
-        } catch (err: any) {
-            console.error('Verification error:', JSON.stringify(err, null, 2));
-            setAlertConfig({
-                visible: true,
-                title: 'Error',
-                message: err.errors?.[0]?.message || 'Verification failed'
-            });
-        } finally {
-            setLoading(false);
-        }
+    const onPressVerifyComplete = () => {
+        router.replace('/login');
     };
 
     return (
@@ -299,47 +254,13 @@ export default function SignupScreen() {
                         </>
                     ) : (
                         <Animated.View entering={SlideInRight} style={styles.verificationContainer}>
-                            <Text style={styles.title}>Verification</Text>
+                            <Text style={styles.title}>Check Your Email</Text>
                             <Text style={styles.subtitle}>
-                                Enter the 6 digit code that you received on your email.
+                                We&apos;ve sent a confirmation link to your email address. Please click it to verify your account, then return here to log in.
                             </Text>
 
-                            <View style={styles.codeContainer}>
-                                <View style={styles.otpContainer}>
-                                    {Array(6).fill(0).map((_, index) => (
-                                        <View
-                                            key={index}
-                                            style={[
-                                                styles.otpBox,
-                                                code.length === index && styles.otpBoxActive
-                                            ]}
-                                        >
-                                            <Text style={styles.otpText}>
-                                                {code[index] || ''}
-                                            </Text>
-                                        </View>
-                                    ))}
-                                </View>
-                                <TextInput
-                                    style={styles.hiddenInput}
-                                    value={code}
-                                    onChangeText={(text) => setCode(text.replace(/[^0-9]/g, '').slice(0, 6))}
-                                    keyboardType="numeric"
-                                    maxLength={6}
-                                    autoFocus
-                                />
-                            </View>
-
-                            <View style={styles.resendContainer}>
-                                <Text style={styles.footerText}>Didn't receive the code? </Text>
-                                <TouchableOpacity onPress={onSignUpPress}>
-                                    <Text style={styles.resendText}>Resend Code</Text>
-                                </TouchableOpacity>
-                            </View>
-
                             <TouchableOpacity
-                                onPress={onPressVerify}
-                                disabled={loading}
+                                onPress={onPressVerifyComplete}
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
@@ -348,11 +269,7 @@ export default function SignupScreen() {
                                     end={{ x: 1, y: 0 }}
                                     style={styles.button}
                                 >
-                                    {loading ? (
-                                        <ActivityIndicator color="#000" />
-                                    ) : (
-                                        <Text style={styles.buttonText}>Continue</Text>
-                                    )}
+                                    <Text style={styles.buttonText}>Go to Login</Text>
                                 </LinearGradient>
                             </TouchableOpacity>
                         </Animated.View>

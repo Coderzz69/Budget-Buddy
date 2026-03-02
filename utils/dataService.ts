@@ -1,4 +1,11 @@
 import { api } from './api';
+import { supabase } from '../lib/supabase';
+
+// Helper to get the current token
+const getAuthOptions = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token ? { headers: { Authorization: `Bearer ${session.access_token}` } } : {};
+};
 
 export interface Transaction {
     id: string;
@@ -20,7 +27,7 @@ export interface Account {
 
 export interface UserProfile {
     id: string;
-    clerkId: string;
+    supabaseId: string;
     email: string;
     name?: string;
     currency?: string;
@@ -28,8 +35,8 @@ export interface UserProfile {
 
 export const dataService = {
     // Transactions
-    getTransactions: async (token?: string): Promise<Transaction[]> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    getTransactions: async (): Promise<Transaction[]> => {
+        const options = await getAuthOptions();
         const data = await api.get('/transactions', options);
         return data.map((t: any) => ({
             ...t,
@@ -47,8 +54,8 @@ export const dataService = {
         description?: string;
         date: string; // ISO string
         accountId: string;
-    }, token?: string): Promise<Transaction> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    }): Promise<Transaction> => {
+        const options = await getAuthOptions();
         const response = await api.post('/transactions', data, options);
         return { ...response, amount: Number(response.amount), description: response.note || response.description };
     },
@@ -60,60 +67,60 @@ export const dataService = {
         description?: string;
         date: string; // ISO string
         accountId: string;
-    }, token?: string): Promise<Transaction> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    }): Promise<Transaction> => {
+        const options = await getAuthOptions();
         const response = await api.put(`/transactions/${id}`, data, options);
         return { ...response, amount: Number(response.amount), description: response.note || response.description };
     },
 
-    deleteTransaction: async (id: string, token?: string): Promise<void> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    deleteTransaction: async (id: string): Promise<void> => {
+        const options = await getAuthOptions();
         return api.delete(`/transactions/${id}`, options);
     },
 
     // Accounts
-    getAccounts: async (token?: string): Promise<Account[]> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    getAccounts: async (): Promise<Account[]> => {
+        const options = await getAuthOptions();
         return api.get('/accounts', options);
     },
 
-    createAccount: async (data: { name: string; type: string }, token?: string): Promise<Account> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    createAccount: async (data: { name: string; type: string }): Promise<Account> => {
+        const options = await getAuthOptions();
         return api.post('/accounts', data, options);
     },
 
     // User Profile
-    getUserProfile: async (token?: string): Promise<UserProfile> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    getUserProfile: async (): Promise<UserProfile> => {
+        const options = await getAuthOptions();
         return api.get('/user/profile', options);
     },
 
-    updateUserProfile: async (data: { name?: string; currency?: string }, token?: string): Promise<UserProfile> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    updateUserProfile: async (data: { name?: string; currency?: string }): Promise<UserProfile> => {
+        const options = await getAuthOptions();
         return api.put('/user/profile', data, options);
     },
 
     // Helpers
-    ensureDefaultAccount: async (token?: string): Promise<Account> => {
-        const accounts = await dataService.getAccounts(token);
+    ensureDefaultAccount: async (): Promise<Account> => {
+        const accounts = await dataService.getAccounts();
         if (accounts.length > 0) {
             return accounts[0];
         }
-        return dataService.createAccount({ name: 'Main Wallet', type: 'cash' }, token);
+        return dataService.createAccount({ name: 'Main Wallet', type: 'cash' });
     },
 
-    getCategories: async (token?: string): Promise<{ id: string, name: string, icon: string, color?: string }[]> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    getCategories: async (): Promise<{ id: string, name: string, icon: string, color?: string }[]> => {
+        const options = await getAuthOptions();
         return api.get('/categories', options);
     },
 
-    updateCategory: async (id: string, data: { name: string, icon: string, color: string }, token?: string): Promise<{ message: string }> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    updateCategory: async (id: string, data: { name: string, icon: string, color: string }): Promise<{ message: string }> => {
+        const options = await getAuthOptions();
         return api.put(`/categories/${id}`, data, options);
     },
 
-    deleteCategory: async (id: string, token?: string): Promise<{ message: string }> => {
-        const options = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    deleteCategory: async (id: string): Promise<{ message: string }> => {
+        const options = await getAuthOptions();
         return api.delete(`/categories/${id}`, options);
     }
 };
