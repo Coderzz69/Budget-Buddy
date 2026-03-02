@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Platform, Image } from 'react-native';
 import React, { useState, useCallback, useEffect } from 'react';
-import { useUser, useAuth } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/theme';
 import { useColorScheme } from '../../hooks/use-color-scheme';
@@ -14,8 +14,7 @@ import { GlassView } from '../../components/ui/GlassView';
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen() {
-    const { user } = useUser();
-    const { getToken } = useAuth();
+    const [user, setUser] = useState<any>(null);
     const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
@@ -27,11 +26,21 @@ export default function DashboardScreen() {
         expense: 0
     });
 
+    const [profile, setProfile] = useState<any>(null);
+
     const loadData = async () => {
         try {
-            const token = await getToken();
-            const data = await dataService.getTransactions(token || undefined);
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user);
+
+            // Fetch transactions and profile concurrently
+            const [data, userProfile] = await Promise.all([
+                dataService.getTransactions(),
+                dataService.getUserProfile().catch(() => null)
+            ]);
+
             setTransactions(data);
+            setProfile(userProfile);
 
             // Calculate summary
             let income = 0;
@@ -175,11 +184,22 @@ export default function DashboardScreen() {
         >
             <SafeAreaView edges={['top']}>
                 <View style={styles.header}>
-                    <View>
-                        <Text style={styles.greeting}>Hello,</Text>
-                        <Text style={[styles.userName, { color: theme.text }]}>
-                            {user?.firstName || 'User'} 👋
-                        </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <Image
+                            source={
+                                profile?.currency === 'USD'
+                                    ? require('../../assets/images/logo-usd.jpg')
+                                    : require('../../assets/images/logo-inr.jpg')
+                            }
+                            style={{ width: 44, height: 44, borderRadius: 12 }}
+                            resizeMode="contain"
+                        />
+                        <View>
+                            <Text style={styles.greeting}>Hello,</Text>
+                            <Text style={[styles.userName, { color: theme.text }]}>
+                                {user?.user_metadata?.first_name || user?.user_metadata?.full_name || user?.user_metadata?.name?.split(' ')[0] || 'User'} 👋
+                            </Text>
+                        </View>
                     </View>
                     <TouchableOpacity
                         style={styles.profileButton}

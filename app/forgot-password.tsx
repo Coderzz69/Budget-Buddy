@@ -1,4 +1,4 @@
-import { useSignIn } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -19,11 +19,9 @@ import CustomAlert from '../components/CustomAlert';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
-    const { signIn, setActive, isLoaded } = useSignIn();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [code, setCode] = useState('');
     const [successfulRequest, setSuccessfulRequest] = useState(false);
     const [loading, setLoading] = useState(false);
 
@@ -40,29 +38,24 @@ export default function ForgotPasswordScreen() {
             return;
         }
 
-        if (!isLoaded) {
-            return;
-        }
-
         setLoading(true);
         try {
-            await signIn.create({
-                strategy: 'reset_password_email_code',
-                identifier: email,
-            });
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+            if (error) throw error;
 
             setSuccessfulRequest(true);
             setAlertConfig({
                 visible: true,
                 title: 'Check your email',
-                message: 'We sent you a 6-digit reset code.'
+                message: 'We sent you a password reset link. Please check your email and follow the instructions.'
             });
         } catch (err: any) {
-            console.error('Request reset error:', JSON.stringify(err, null, 2));
+            console.error('Request reset error:', err.message);
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: err.errors?.[0]?.message || 'Failed to send reset code'
+                message: err.message || 'Failed to send reset code'
             });
         } finally {
             setLoading(false);
@@ -70,48 +63,40 @@ export default function ForgotPasswordScreen() {
     };
 
     const onReset = async () => {
-        if (!code || !password) {
-            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter the code and your new password' });
-            return;
-        }
+        // Since Supabase usually uses deep links for password resets instead of codes,
+        // this screen might not be strictly necessary if the link opens the app directly
+        // and provides a session, allowing immediate password update.
+        // Assuming the deep link brings them here with a session ready for update:
 
-        if (code.length !== 6) {
-            setAlertConfig({ visible: true, title: 'Error', message: 'Code must be 6 digits' });
-            return;
-        }
-
-        if (!isLoaded) {
+        if (!password) {
+            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter your new password' });
             return;
         }
 
         setLoading(true);
         try {
-            const result = await signIn.attemptFirstFactor({
-                strategy: 'reset_password_email_code',
-                code,
-                password,
+            const { error } = await supabase.auth.updateUser({
+                password: password
             });
 
-            if (result.status === 'complete') {
-                await setActive({ session: result.createdSessionId });
+            if (error) throw error;
 
-                setAlertConfig({
-                    visible: true,
-                    title: 'Success',
-                    message: 'Your password has been reset.'
-                });
+            setAlertConfig({
+                visible: true,
+                title: 'Success',
+                message: 'Your password has been reset.'
+            });
 
-                setTimeout(() => {
-                    // @ts-ignore
-                    router.replace('/dashboard');
-                }, 1500);
-            }
+            setTimeout(() => {
+                router.replace('/(tabs)/dashboard');
+            }, 1500);
+
         } catch (err: any) {
-            console.error('Reset error:', JSON.stringify(err, null, 2));
+            console.error('Reset error:', err.message);
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: err.errors?.[0]?.message || 'Failed to reset password'
+                message: err.message || 'Failed to reset password'
             });
         } finally {
             setLoading(false);
@@ -136,7 +121,7 @@ export default function ForgotPasswordScreen() {
                     {!successfulRequest ? (
                         <>
                             <Text style={styles.subtitle}>
-                                Enter the email address associated with your account and we'll send you a code to reset your password.
+                                Enter the email address associated with your account and we&apos;ll send you a code to reset your password.
                             </Text>
 
                             <View style={styles.inputGroup}>
@@ -174,37 +159,8 @@ export default function ForgotPasswordScreen() {
                     ) : (
                         <>
                             <Text style={styles.subtitle}>
-                                Check your email for the 6-digit verification code.
+                                Once you have followed the link in your email to reset the password, enter your new password here if prompted.
                             </Text>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Verification Code</Text>
-                                <View style={{ position: 'relative', height: 55 }}>
-                                    <View style={styles.otpContainer}>
-                                        {Array(6).fill(0).map((_, index) => (
-                                            <View
-                                                key={index}
-                                                style={[
-                                                    styles.otpBox,
-                                                    code.length === index && styles.otpBoxActive
-                                                ]}
-                                            >
-                                                <Text style={styles.otpText}>
-                                                    {code[index] || ''}
-                                                </Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                    <TextInput
-                                        style={styles.hiddenInput}
-                                        value={code}
-                                        onChangeText={(text) => setCode(text.replace(/[^0-9]/g, '').slice(0, 6))}
-                                        keyboardType="numeric"
-                                        maxLength={6}
-                                        autoFocus
-                                    />
-                                </View>
-                            </View>
 
                             <View style={styles.inputGroup}>
                                 <Text style={styles.label}>New Password</Text>

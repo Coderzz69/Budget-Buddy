@@ -1,9 +1,7 @@
-import { useAuth, useOAuth, useSignIn } from '@clerk/clerk-expo';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-// import * as SecureStore from 'expo-secure-store'; // Removing direct import
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,14 +18,18 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
 import { useWarmUpBrowser } from '../hooks/useWarmUpBrowser';
 import { getItem, removeItem, setItem } from '../utils/storage';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as QueryParams from 'expo-auth-session/build/QueryParams';
+
+// Ensure the browser closes automatically on web after auth
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
     useWarmUpBrowser();
 
     const router = useRouter();
-    const { signIn, setActive, isLoaded } = useSignIn();
-    const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
-    const { getToken } = useAuth();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -40,9 +42,6 @@ export default function LoginScreen() {
         title: '',
         message: '',
     });
-
-    const [pendingTwoFactor, setPendingTwoFactor] = useState(false);
-    const [code, setCode] = useState('');
 
     useEffect(() => {
         async function loadSavedEmail() {
@@ -65,25 +64,19 @@ export default function LoginScreen() {
             return;
         }
 
-        console.log('Starting login...');
-        if (!isLoaded) {
-            console.log('Clerk not loaded yet');
-            return;
-        }
-
         setLoading(true);
         try {
             console.log('Attempting to create session with:', email);
-            const completeSignIn = await signIn.create({
-                identifier: email,
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
                 password,
             });
-            console.log('Session created:', completeSignIn.status);
 
-            if (completeSignIn.status === 'complete') {
-                await setActive({ session: completeSignIn.createdSessionId });
-                console.log('Session set active');
+            if (error) throw error;
 
+            console.log('Session created:', data.session?.user.id);
+
+            if (data.session) {
                 if (rememberMe) {
                     await setItem('saved_email', email);
                 } else {
@@ -91,115 +84,156 @@ export default function LoginScreen() {
                 }
 
                 console.log('Redirecting to dashboard...');
-                router.replace('/dashboard');
-            } else if (completeSignIn.status === 'needs_second_factor') {
-                console.log('2FA required...');
-                setPendingTwoFactor(true);
+                router.replace('/(tabs)/dashboard');
             } else {
-                console.log('Sign in not complete:', completeSignIn.status);
                 setAlertConfig({
                     visible: true,
                     title: 'Login Error',
-                    message: 'Login failed. Status: ' + completeSignIn.status
+                    message: 'Login failed. No session returned.'
                 });
             }
         } catch (err: any) {
-            console.error('Login error:', JSON.stringify(err, null, 2));
-            const errorMessage = err.errors?.[0]?.message || 'Login failed. Please check your credentials.';
+            console.error('Login error:', err.message);
+            const errorMessage = err.message || 'Login failed. Please check your credentials.';
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: errorMessage.includes('CAPTCHA') ? errorMessage + '\n\n(If you are on Web, please disable AdBlockers)' : errorMessage
+                message: errorMessage
             });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleTwoFactorVerify = async () => {
-        if (!code || code.length !== 6) {
-            setAlertConfig({ visible: true, title: 'Error', message: 'Please enter the 6-digit code' });
-            return;
-        }
+    const createSessionFromUrl = async (url: string) => {
+        const { params, errorCode } = QueryParams.getQueryParams(url);
 
-        if (!isLoaded) return;
+        if (errorCode) throw new Error(errorCode);
 
-        setLoading(true);
-        try {
-            console.log('Verifying 2FA code:', code);
-            // Assuming phone_code or totp based on what's enabled. 
-            // We can check signIn.supportedSecondFactors to be more robust, 
-            // but for now let's try 'totp' as it's common for auth apps, 
-            // or we could iterate.
-            // Let's try to detect strategy.
-            const strategy = signIn.supportedSecondFactors?.find(f => f.strategy === 'totp')?.strategy || 'phone_code';
-            console.log('Using strategy:', strategy);
+        const { access_token, refresh_token } = params;
+        if (!access_token || !refresh_token) return;
 
-            const completeSignIn = await signIn.attemptSecondFactor({
-                strategy: strategy as any,
-                code,
-            });
+        console.log('Got tokens from URL, setting session...');
+        const { data, error } = await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+        });
 
-            if (completeSignIn.status === 'complete') {
-                await setActive({ session: completeSignIn.createdSessionId });
-                console.log('Session set active after 2FA');
+        if (error) throw error;
 
-                if (rememberMe) {
-                    await setItem('saved_email', email);
-                } else {
-                    await removeItem('saved_email');
-                }
-                router.replace('/dashboard');
-            } else {
-                console.log('2FA not complete:', completeSignIn.status);
-                setAlertConfig({
-                    visible: true,
-                    title: 'Error',
-                    message: 'Verification failed. Status: ' + completeSignIn.status
-                });
-            }
-        } catch (err: any) {
-            console.error('2FA error:', JSON.stringify(err, null, 2));
-            setAlertConfig({
-                visible: true,
-                title: 'Error',
-                message: err.errors?.[0]?.message || 'Verification failed'
-            });
-        } finally {
-            setLoading(false);
-        }
+        // Let the global layout auth listener catch the update and redirect to dashboard
+        console.log('OAuth session set for:', data.session?.user.id);
     };
 
     const handleGoogleLogin = async () => {
+        console.log('--- START GOOGLE OAUTH ---');
+        setLoading(true);
         try {
-            const { createdSessionId, setActive, signUp, signIn } = await startOAuthFlow({
-                redirectUrl: Linking.createURL('/dashboard', { scheme: 'budgetbuddy' }),
+            if (Platform.OS === 'web') {
+                console.log('[1] Executing Web-only OAuth flow...');
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin,
+                        skipBrowserRedirect: false, // Let Supabase window.location redirect handle it naturally
+                    },
+                });
+
+                if (error) {
+                    console.log('[Web Auth Error]:', error);
+                    throw error;
+                }
+
+                // Execution stops here on web as the page redirects.
+                return;
+            }
+
+            // --- NATIVE (iOS/Android) FLOW ---
+            console.log('[1] Executing Native-only OAuth flow...');
+
+            // In development (Expo Go), `makeRedirectUri()` generates `exp://192.168.x.x:8081`. 
+            // Adding a path forces the router to resolve to the root index.
+            const redirectUrl = makeRedirectUri({ path: '' });
+            console.log('[2] Generated native redirectUrl:', redirectUrl);
+
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: redirectUrl,
+                    skipBrowserRedirect: true, // We must handle the redirect manually in React Native
+                },
             });
 
-            if (createdSessionId && setActive) {
-                console.log('Google Auth success. Session:', createdSessionId);
-                await setActive({ session: createdSessionId });
-            } else if (signUp && signUp.status === 'missing_requirements') {
-                console.log('Google Auth missing requirements. Redirecting to complete-profile.');
-                // Redirect to completion screen
-                // We don't setActive here because it's not complete.
-                router.push('/complete-profile');
-            } else {
-                // Use signIn or signUp for next steps such as MFA
-                console.log('Google Auth status:', {
-                    signInStatus: signIn?.status,
-                    signUpStatus: signUp?.status
-                });
+            if (error) {
+                console.log('[3] Supabase signInWithOAuth error:', error);
+                throw error;
             }
+
+            console.log('[3] Supabase returned Auth URL:', data?.url);
+
+            if (data?.url) {
+                console.log('[4] Opening WebBrowser with redirect (Native):', redirectUrl);
+
+                // Add a one-time listener to catch the redirect early, before Expo Router tries to mount a fake screen
+                const authSubscription = Linking.addEventListener('url', async (event) => {
+                    if (event.url.includes('access_token')) {
+                        console.log('[4] Caught OAuth Deep Link manually:', event.url);
+                        await createSessionFromUrl(event.url);
+                        // Close the browser automatically if it's still open
+                        if (Platform.OS !== 'ios') {
+                            WebBrowser.dismissBrowser();
+                        }
+                    }
+                });
+
+                // Start the browser session natively using expo-auth-session
+                const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+                console.log('[5] WebBrowser promise returned:', res);
+                if (res.type === 'success' && res.url) {
+                    console.log('[6] Success from WebBrowser Promise! Parsing URL:', res.url);
+                    await createSessionFromUrl(res.url);
+                }
+
+                // Cleanup
+                authSubscription.remove();
+
+            } else {
+                console.log('[3] No data.url returned from Supabase.');
+            }
+
         } catch (err: any) {
-            console.error('OAuth error', err);
+            console.error('[Error] Google Login error:', err.message);
             setAlertConfig({
                 visible: true,
                 title: 'Error',
-                message: err.errors?.[0]?.message || 'Google sign-in failed'
+                message: err.message || 'Google Sign In failed.'
             });
+        } finally {
+            setLoading(false);
+            console.log('--- END GOOGLE OAUTH ---');
         }
     };
+
+    // Keep deep link listener as fallback or for direct external app launches
+    useEffect(() => {
+        const handleDeepLink = async (event: Linking.EventType) => {
+            if (!event.url) return;
+            try {
+                await createSessionFromUrl(event.url);
+            } catch (err) {
+                console.log('Error catching deep link initial session:', err);
+            }
+        };
+
+        const subscription = Linking.addEventListener('url', handleDeepLink);
+
+        Linking.getInitialURL().then((url) => {
+            if (url) handleDeepLink({ url });
+        });
+
+        return () => subscription.remove();
+    }, []);
 
     const goToSignup = () => {
         router.push('/signup');
@@ -222,165 +256,106 @@ export default function LoginScreen() {
                     entering={FadeInDown.duration(600).springify()}
                     style={styles.formContainer}
                 >
-                    {!pendingTwoFactor ? (
-                        <>
-                            <Text style={styles.title}>Sign In</Text>
+                    <>
+                        <Text style={styles.title}>Sign In</Text>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Email</Text>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Email</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="serena88@gmail.com"
+                                placeholderTextColor="#666"
+                                value={email}
+                                onChangeText={setEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Password</Text>
+                            <View style={styles.passwordContainer}>
                                 <TextInput
-                                    style={styles.input}
-                                    placeholder="serena88@gmail.com"
+                                    style={styles.passwordInput}
+                                    placeholder="*************"
                                     placeholderTextColor="#666"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
                                 />
-                            </View>
-
-                            <View style={styles.inputGroup}>
-                                <Text style={styles.label}>Password</Text>
-                                <View style={styles.passwordContainer}>
-                                    <TextInput
-                                        style={styles.passwordInput}
-                                        placeholder="*************"
-                                        placeholderTextColor="#666"
-                                        value={password}
-                                        onChangeText={setPassword}
-                                        secureTextEntry={!showPassword}
+                                <TouchableOpacity
+                                    style={styles.eyeIcon}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                >
+                                    <Ionicons
+                                        name={showPassword ? "eye-off" : "eye"}
+                                        size={20}
+                                        color="#666"
                                     />
-                                    <TouchableOpacity
-                                        style={styles.eyeIcon}
-                                        onPress={() => setShowPassword(!showPassword)}
-                                    >
-                                        <Ionicons
-                                            name={showPassword ? "eye-off" : "eye"}
-                                            size={20}
-                                            color="#666"
-                                        />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            <View style={styles.optionsRow}>
-                                <TouchableOpacity
-                                    style={styles.rememberMeContainer}
-                                    onPress={() => setRememberMe(!rememberMe)}
-                                >
-                                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                                        {rememberMe && <Ionicons name="checkmark" size={12} color="#000" />}
-                                    </View>
-                                    <Text style={styles.rememberMeText}>Remember me</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity onPress={goToForgotPassword}>
-                                    <Text style={styles.forgotPasswordText}>Forgot password?</Text>
                                 </TouchableOpacity>
                             </View>
+                        </View>
 
+                        <View style={styles.optionsRow}>
                             <TouchableOpacity
-                                onPress={handleEmailLogin}
-                                disabled={loading}
-                                activeOpacity={0.8}
+                                style={styles.rememberMeContainer}
+                                onPress={() => setRememberMe(!rememberMe)}
                             >
-                                <LinearGradient
-                                    colors={['#F97316', '#FB923C']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.button}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#000" />
-                                    ) : (
-                                        <Text style={styles.buttonText}>Sign In</Text>
-                                    )}
-                                </LinearGradient>
+                                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                                    {rememberMe && <Ionicons name="checkmark" size={12} color="#000" />}
+                                </View>
+                                <Text style={styles.rememberMeText}>Remember me</Text>
                             </TouchableOpacity>
 
-                            <View style={styles.dividerContainer}>
-                                <View style={styles.line} />
-                                <Text style={styles.dividerText}>Or Sign In with</Text>
-                                <View style={styles.line} />
-                            </View>
-
-                            <View style={styles.socialRow}>
-                                <TouchableOpacity
-                                    style={[styles.socialButton, { backgroundColor: '#FFFFFF', borderWidth: 0 }]}
-                                    onPress={handleGoogleLogin}
-                                    activeOpacity={0.9}
-                                    disabled={loading}
-                                >
-                                    <Ionicons name="logo-google" size={20} color="#000" />
-                                    <Text style={[styles.socialButtonText, { color: '#000', marginLeft: 8 }]}>Sign In with Google</Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.footer}>
-                                <Text style={styles.footerText}>Don't have an account? </Text>
-                                <TouchableOpacity onPress={goToSignup}>
-                                    <Text style={styles.signupText}>Sign Up</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </>
-                    ) : (
-                        <View style={styles.verificationContainer}>
-                            <Text style={styles.title}>2FA Verification</Text>
-                            <Text style={styles.subtitle}>
-                                Enter the 6 digit code from your authenticator app or received via SMS.
-                            </Text>
-
-                            <View style={styles.codeContainer}>
-                                <View style={styles.otpContainer}>
-                                    {Array(6).fill(0).map((_, index) => (
-                                        <View
-                                            key={index}
-                                            style={[
-                                                styles.otpBox,
-                                                code.length === index && styles.otpBoxActive
-                                            ]}
-                                        >
-                                            <Text style={styles.otpText}>
-                                                {code[index] || ''}
-                                            </Text>
-                                        </View>
-                                    ))}
-                                </View>
-                                <TextInput
-                                    style={styles.hiddenInput}
-                                    value={code}
-                                    onChangeText={(text) => setCode(text.replace(/[^0-9]/g, '').slice(0, 6))}
-                                    keyboardType="numeric"
-                                    maxLength={6}
-                                    autoFocus
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={handleTwoFactorVerify}
-                                disabled={loading}
-                                activeOpacity={0.8}
-                            >
-                                <LinearGradient
-                                    colors={['#F97316', '#FB923C']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.button}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#000" />
-                                    ) : (
-                                        <Text style={styles.buttonText}>Verify</Text>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity onPress={() => setPendingTwoFactor(false)} style={styles.footer}>
-                                <Text style={styles.footerText}>Back to Login</Text>
+                            <TouchableOpacity onPress={goToForgotPassword}>
+                                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
                             </TouchableOpacity>
                         </View>
-                    )}
 
+                        <TouchableOpacity
+                            onPress={handleEmailLogin}
+                            disabled={loading}
+                            activeOpacity={0.8}
+                        >
+                            <LinearGradient
+                                colors={['#F97316', '#FB923C']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.button}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#000" />
+                                ) : (
+                                    <Text style={styles.buttonText}>Sign In</Text>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <View style={styles.dividerContainer}>
+                            <View style={styles.line} />
+                            <Text style={styles.dividerText}>Or Sign In with</Text>
+                            <View style={styles.line} />
+                        </View>
+
+                        <View style={styles.socialRow}>
+                            <TouchableOpacity
+                                style={[styles.socialButton, { backgroundColor: '#FFFFFF', borderWidth: 0 }]}
+                                onPress={handleGoogleLogin}
+                                activeOpacity={0.9}
+                                disabled={loading}
+                            >
+                                <Ionicons name="logo-google" size={20} color="#000" />
+                                <Text style={[styles.socialButtonText, { color: '#000', marginLeft: 8 }]}>Sign In with Google</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+                            <TouchableOpacity onPress={goToSignup}>
+                                <Text style={styles.signupText}>Sign Up</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </>
                 </Animated.View>
             </ScrollView>
             <CustomAlert
@@ -389,7 +364,7 @@ export default function LoginScreen() {
                 message={alertConfig.message}
                 onClose={() => setAlertConfig({ ...alertConfig, visible: false })}
             />
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingView >
     );
 }
 
