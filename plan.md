@@ -1,101 +1,114 @@
-# Budget Buddy - Complete Rebuild Plan
+# Budget Buddy - Native Android (Kotlin) Migration Plan
 
-This document outlines the step-by-step plan to rebuild the **Budget Buddy** application from scratch, covering the complete frontend architecture, backend services, styling approach, and data layer.
-
-## 1. Technology Stack
-* **Frontend Framework**: React Native with Expo (Expo Router for file-based routing)
-* **Styling**: NativeWind (Tailwind CSS for React Native) + `StyleSheet` for complex/animated properties.
-* **Animations & UI Hook**: React Native Reanimated, Expo Linear Gradient, React Native Gesture Handler.
-* **Charting**: `react-native-gifted-charts` for analytics data visualization.
-* **Backend & Validation**: Supabase (PostgreSQL Database, Authentication).
-* **Data Fetching Layer**: Custom API client (`utils/api.ts`) abstracting standard HTTP fetches with Bearer tokens.
+This document outlines the complete architectural roadmap and step-by-step plan to rebuild the **Budget Buddy** application from React Native (Expo) into a fully native Android application using **Android Studio**, **Kotlin**, and **Jetpack Compose**.
 
 ---
 
-## 2. Backend & Data Architecture Setup
+## 1. Environment Variables & Sensitive Information
 
-### 2.1 Supabase Configuration
-1. Initialize a new Supabase project.
-2. Enable Email/Password authentication.
-3. Setup `ExpoStorage` using `@react-native-async-storage/async-storage` for persisting the Supabase session on mobile devices.
+To successfully connect your new Android Studio project to your existing backend and Supabase instance, you must port over your environment variables. 
 
-### 2.2 Database Schema Plan
-The backend requires the following core tables/models:
-* **Users**: `id` (UUID), `supabaseId` (String), `email` (String), `name` (String, nullable), `currency` (String, default: USD).
-* **Accounts**: `id` (UUID), `name` (String, e.g., 'Main Wallet'), `type` (String, e.g., 'cash'), `userId` (FK to Users).
-* **Transactions**: `id` (UUID), `type` (Enum: 'income', 'expense'), `category` (String or FK to Categories), `amount` (Decimal), `description/note` (Text), `occurredAt/date` (Timestamp), `accountId` (FK to Accounts).
-* **Categories**: `id` (UUID), `name` (String), `icon` (String - mapping to SF Symbols/Vector Icons), `color` (Hex string).
+In Android Studio, these are typically stored in `local.properties` (to keep them out of version control) and exposed to the app via the `BuildConfig` field or a dedicated `Secrets Gradle Plugin`.
 
-### 2.3 API Service Abstraction
-Instead of directly calling Supabase clients in components, implement a centralized API handler (`utils/api.ts`) that appends the Supabase `access_token` to `Authorization: Bearer <token>` headers for secure routing. 
+### Required Variables:
 
----
+```properties
+# Add these to your local.properties file in the root of the Android Studio project
 
-## 3. Frontend Architecture & Layouts
+# Supabase Credentials
+SUPABASE_URL="https://ojrhotaxanegfonsqieu.supabase.co"
+SUPABASE_ANON_KEY="sb_publishable_VuMc1KqFXMMp_2GVGF-PSA_Z-adBNdn"
 
-### 3.1 Core Styling & Theming System
-* **Colors Configuration** (`constants/theme.ts`): Define `light` and `dark` objects containing structural colors (tint, background, tabIconDefault).
-* **Global Background** (`app/_layout.tsx`): Implement a root layout enclosed in an `<LinearGradient>`:
-  * *Dark Mode*: Deep Space (`['#0f0c29', '#302b63', '#24243e']`)
-  * *Light Mode*: Sky Blue (`['#E0F2FE', '#F0F9FF', '#FFF7ED']`)
-
-### 3.2 Global UI Components (`components/ui`)
-Rebuild these foundational components first:
-1. **GlassView**: A reusable translucent container using `expo-blur` or absolute positioned semi-transparent backgrounds with borders to create a glassmorphism effect.
-2. **IconSymbol**: A unified icon wrapper addressing iOS (`SFSymbols`) and Android (`@expo/vector-icons`).
-3. **DateNavigator**: A component for swiping or toggling between months/weeks in the Analytics view.
-4. **SegmentedControl**: Custom animated toggle switch for alternating datasets (e.g., Income vs. Expense).
-5. **CustomAlert**: Global alert/toast mechanism for handling API errors gracefully.
-
-### 3.3 Application Navigation (Expo Router)
-The routing tree structure:
-```text
-app/
- ├── _layout.tsx (Root Stack + Auth Guard)
- ├── index.tsx (Splash / Redirector)
- ├── login.tsx & signup.tsx (Auth flow)
- ├── forgot-password.tsx & complete-profile.tsx 
- └── (tabs)/
-      ├── _layout.tsx (Custom Tab Bar Stack)
-      ├── dashboard.tsx (Home - Summary & Recent)
-      ├── transactions.tsx (List & Filter)
-      ├── add.tsx (Create Transaction Form)
-      ├── budget.tsx (Analytics & Charts)
-      └── profile.tsx (Settings)
+# Backend API URL 
+# Note: If testing on an Android Emulator targeting a local PC server, 
+# you typically use http://10.0.2.2:3000. 
+# For a physical device on the same Wi-Fi, use your machine's exact local IP (e.g. 10.5.x.x).
+BACKEND_API_URL="http://10.5.0.255:3000" 
 ```
 
-### 3.4 Custom Tab Bar Design
-In `app/(tabs)/_layout.tsx`, override the default `bottom-tabs`:
-* Hide default header and labels.
-* Style the bounding box as a floating pill (absolute position, bottom 25, borderRadius 40).
-* Use `GlassView` as the `tabBarBackground`.
-* **Add Button Special Styling**: The center "Add" button should be elevated, circular, with a solid `#38BDF8` background and drop shadow to pop out from the glass bar.
+**Google OAuth Web Client ID:**
+For native Google Sign-In via Credential Manager, you will need the Web Client ID from your Google Cloud Console.
+```properties
+GOOGLE_WEB_CLIENT_ID="<YOUR_GOOGLE_CLOUD_WEB_CLIENT_ID>.apps.googleusercontent.com"
+```
 
 ---
 
-## 4. Step-by-Step Implementation Roadmap
+## 2. Technology Stack & Replacements
 
-### Phase 1: Skeleton & Auth Foundation
-1. `npx create-expo-app@latest -t tabs` and configure NativeWind.
-2. Establish the `_layout.tsx` wrapper with ThemeProviders, LinearGradients, and Supabase init listener.
-3. Build the Auth screens (`login`, `signup`) and implement the routing redirect logic (Deep linking + session validation).
+| Feature | Expo / React Native | Native Android (Android Studio) |
+| :--- | :--- | :--- |
+| **Language** | TypeScript / JavaScript | Kotlin |
+| **UI Framework** | React Native (JSX) | Jetpack Compose |
+| **Styling** | NativeWind (Tailwind) | Compose Modifiers & Material 3 |
+| **Navigation** | Expo Router | Jetpack Navigation Compose |
+| **Database/Auth** | `@supabase/supabase-js` | **Supabase Kotlin SDK** (`gotrue-kt`, `postgrest-kt`) |
+| **Google Auth** | `expo-auth-session` / WebBrowser | **Google Credential Manager API** |
+| **API Client** | `fetch` (utils/api.ts) | **Retrofit2 + OkHttp3** |
+| **Local Storage** | `AsyncStorage` / SecureStore | **Jetpack DataStore** (Preferences) |
+| **Charts** | `react-native-gifted-charts` | **Vico** (Compose charting library) |
+| **Architecture** | Component State / Hooks | **MVVM** (ViewModel + StateFlow) + **Hilt** (Dependency Injection) |
 
-### Phase 2: Core Layouts & Components
-1. Recreate the Glassmorphism theme tokens.
-2. Implement the floating Tab Bar geometry in `(tabs)/_layout.tsx`.
-3. Build the core UI primitives (`GlassView`, `IconSymbol`).
+---
 
-### Phase 3: Data Integration & Forms
-1. Build `utils/api.ts` and `utils/dataService.ts` wrappers.
-2. Implement the `Add Transaction` screen consisting of amount inputs, category selectors, and date pickers. Wire to `dataService.addTransaction()`.
-3. Implement `Transactions` screen: fetch and render a FlatList of grouped transactional data.
+## 3. Project Setup & Architecture Setup
 
-### Phase 4: Dashboard & Analytics
-1. **Dashboard**: Combine data fetching to render high-level summary cards (Total Balance, Monthly Income/Expense) and a short list of recent transactions.
-2. **Budget/Analytics**: Implement `react-native-gifted-charts`. Combine the `DateNavigator` and `SegmentedControl` to re-fetch and filter transaction data logically, feeding it into interactive Donut and Bar charts.
+### 3.1 Initialize the Project
+1. Open Android Studio -> New Project -> **Empty Activity (Jetpack Compose)**.
+2. Naming: `Budget Buddy`
+3. Package Name: `com.anujdangi.budgetbuddy` (Must match your current Google Cloud Console / Firebase config).
+4. Minimum SDK: API 26 (Android 8.0) or higher recommended.
 
-### Phase 5: Polish & Edge Cases
-1. Integrate `expo-haptics` across all button presses and tab switches.
-2. Add pull-to-refresh (`RefreshControl`) to all primary lists.
-3. Refine Keyboard avoidance handling for forms (`react-native-keyboard-aware-scroll-view` or `KeyboardAvoidingView`).
-4. Ensure dark mode contrast compliance across all text nodes and inputs.
+### 3.2 Add Dependencies (`build.gradle.kts` - app level)
+You will need to import the required libraries:
+* **Supabase:** `io.github.jan-tennert.supabase:gotrue-kt`, `postgrest-kt`, `ktor-client-android`
+* **Networking:** `com.squareup.retrofit2:retrofit`, `converter-gson`
+* **Dependency Injection:** `com.google.dagger:hilt-android`
+* **UI/Navigation:** `androidx.navigation:navigation-compose`, `androidx.lifecycle:lifecycle-viewmodel-compose`
+* **Charts:** `com.patrykandpatrick.vico:compose-m3`
+
+---
+
+## 4. Implementation Step-by-Step
+
+### Phase 1: Core Architecture & Dependency Injection
+1. Setup Hilt for Dependency Injection. Create a `BaseApplication` class annotated with `@HiltAndroidApp`.
+2. Create `AppModule.kt` to provide singletons for your `SupabaseClient` and `Retrofit` API interface.
+3. Configure `Retrofit` to read `BACKEND_API_URL` from `BuildConfig`.
+
+### Phase 2: Supabase Data Layer & API Abstraction
+1. Initialize the `SupabaseClient` in Kotlin, passing `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+2. Replicate `utils/api.ts` by creating an `ApiService` interface in Retrofit. 
+3. Create an `AuthInterceptor` via OkHttp that automatically intercepts outbound Retrofit requests and attaches:
+   `Authorization: Bearer <Supabase_Access_Token>`
+4. Replicate your database models using Kotlin Data Classes (e.g., `data class Transaction(...)`).
+
+### Phase 3: Authentication (Native Google Sign-In)
+1. Since we drop Expo, we drop `expo-auth-session`. Instead, use modern Android auth.
+2. Implement **Google Credential Manager** for a seamless, bottom-sheet 1-tap Google login.
+3. Once Credential Manager returns a Google ID Token, pass that token directly to Supabase via `supabase.auth.signInWith(IDToken)`.
+4. Store the resulting Supabase session securely using encrypted Jetpack DataStore.
+
+### Phase 4: UI Development (Jetpack Compose)
+Replace Expo Router with a `NavHost` containing your routes:
+1. **Theme Setup:** Recreate your Deep Space / Sky Blue gradients using `Brush.linearGradient()` in a custom Compose `Modifier.background()`. Map out Material 3 Typography and Color schemes.
+2. **Tab Navigation:** Implement a `Scaffold` with a custom `BottomAppBar`. Cut out the middle for a floating Action Button (FAB) to replicate your "Add Transaction" button.
+3. **Glassmorphism:** To replace `expo-blur`, use accompanist blur modifiers or render a translucent surface with `.graphicsLayer { renderEffect = BlurEffect(...) }` (API 31+).
+4. **Screens:**
+   * `DashboardScreen.kt`: Summary cards and recent items using `LazyColumn`.
+   * `TransactionsScreen.kt`: Filtering and lists.
+   * `AddTransactionScreen.kt`: Jetpack Compose Data/Time pickers, DropdownMenus for categories. 
+   * `BudgetAnalyticsScreen.kt`: Implement Donut and Bar charts using the **Vico** compose library.
+
+### Phase 5: State Management (MVVM)
+1. For each screen, create a lifecycle-aware `ViewModel` (e.g., `DashboardViewModel`).
+2. Fetch data from Supabase/Node backend inside `viewModelScope.launch`.
+3. Expose state to Compose via `StateFlow` (e.g., `val uiState by viewModel.state.collectAsState()`). This replaces React `useState` and `useEffect`.
+
+---
+
+## 5. Required Action Items Before Migrating
+
+1. **Google Cloud Console Update:** Ensure your Android SHA-1 fingerprint (from Android Studio's keystore) is registered under your existing Google Cloud OAuth Client ID, or create a brand new Android Client ID specifically for this native app.
+2. **Supabase Redirects:** With native Google Credential Manager (ID Token approach), you do not strictly need deep link URL redirects (`budgetbuddy://auth/callback`) anymore, as the Google SDK handles the UI natively without bouncing through a browser!
+3. **Download Android Studio:** Set up device emulators (Level 34/35) to begin Compose testing.
