@@ -38,11 +38,33 @@ const ExpoStorage = {
     },
 };
 
+const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    console.log('\x1b[36m[Supabase Fetch Request]\x1b[0m', input, init?.method);
+    try {
+        const response = await fetch(input, init);
+        console.log(`\x1b[32m[Supabase Fetch Response]\x1b[0m ${response.status} ${response.url}`);
+        if (!response.ok) {
+            const cloned = response.clone();
+            const text = await cloned.text();
+            console.error('\x1b[31m[Supabase Fetch Error Body]\x1b[0m', text);
+        }
+        return response;
+    } catch (error) {
+        console.error('\x1b[31m[Supabase Fetch Exception]\x1b[0m', error);
+        throw error;
+    }
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         storage: ExpoStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        flowType: 'pkce',
+        debug: __DEV__,
+    },
+    global: {
+        fetch: customFetch,
     },
 });

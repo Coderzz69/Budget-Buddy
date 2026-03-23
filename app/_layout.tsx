@@ -28,27 +28,33 @@ function InitialLayout() {
   useEffect(() => {
     const handleSession = async (session: Session | null) => {
       setSession(session);
+      setIsReady(true);
       if (session) {
-        try {
-          await syncUser(session.access_token, { email: session.user.email });
-        } catch (e) {
-          console.error("Failed to sync user with backend:", e);
-        }
+        // Sync user to backend — fire-and-forget, never block navigation
+        syncUser(session.access_token, {
+          email: session.user.email,
+          firstName: session.user.user_metadata?.first_name || session.user.user_metadata?.full_name?.split(' ')[0],
+          lastName: session.user.user_metadata?.last_name || session.user.user_metadata?.full_name?.split(' ').slice(1).join(' '),
+        }).catch((e) => {
+          console.warn("[Auth] Backend sync failed (non-fatal):", e?.message);
+        });
+        setIsRedirecting(false);
+      } else {
         setIsRedirecting(false);
       }
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session).finally(() => setIsReady(true));
+      handleSession(session);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session);
     });
 
     // Helper to safely mark redirecting state with a timeout to prevent deadlocks
     const handlePotentialDeepLink = (url: string | null) => {
-      if (url && url.includes('access_token')) {
+      if (url && (url.includes('access_token') || url.includes('code='))) {
         setIsRedirecting(true);
         // Failsafe: if session isn't established within 5 seconds, unlock navigation
         setTimeout(() => setIsRedirecting(false), 5000);
@@ -63,7 +69,10 @@ function InitialLayout() {
       handlePotentialDeepLink(event.url);
     });
 
-    return () => sub.remove();
+    return () => {
+      subscription.unsubscribe();
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {
