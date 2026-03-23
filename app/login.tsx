@@ -22,6 +22,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { makeRedirectUri } from 'expo-auth-session';
 import * as QueryParams from 'expo-auth-session/build/QueryParams';
+import { AuthSDK } from '../lib/AuthSDK';
 
 // Ensure the browser closes automatically on web after auth
 WebBrowser.maybeCompleteAuthSession();
@@ -105,103 +106,14 @@ export default function LoginScreen() {
         }
     };
 
-    const createSessionFromUrl = async (url: string) => {
-        const { params, errorCode } = QueryParams.getQueryParams(url);
-
-        if (errorCode) throw new Error(errorCode);
-
-        const { access_token, refresh_token } = params;
-        if (!access_token || !refresh_token) return;
-
-        console.log('Got tokens from URL, setting session...');
-        const { data, error } = await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-        });
-
-        if (error) throw error;
-
-        // Let the global layout auth listener catch the update and redirect to dashboard
-        console.log('OAuth session set for:', data.session?.user.id);
-    };
-
     const handleGoogleLogin = async () => {
-        console.log('--- START GOOGLE OAUTH ---');
         setLoading(true);
         try {
-            if (Platform.OS === 'web') {
-                console.log('[1] Executing Web-only OAuth flow...');
-                const { error } = await supabase.auth.signInWithOAuth({
-                    provider: 'google',
-                    options: {
-                        redirectTo: window.location.origin,
-                        skipBrowserRedirect: false, // Let Supabase window.location redirect handle it naturally
-                    },
-                });
-
-                if (error) {
-                    console.log('[Web Auth Error]:', error);
-                    throw error;
-                }
-
-                // Execution stops here on web as the page redirects.
-                return;
+            const session = await AuthSDK.signInWithGoogle();
+            if (session) {
+                // Navigate on successful session creation
+                router.replace('/(tabs)/dashboard');
             }
-
-            // --- NATIVE (iOS/Android) FLOW ---
-            console.log('[1] Executing Native-only OAuth flow...');
-
-            // In development (Expo Go), `makeRedirectUri()` generates `exp://192.168.x.x:8081`. 
-            // Adding a path forces the router to resolve to the root index.
-            const redirectUrl = makeRedirectUri({ path: '' });
-            console.log('[2] Generated native redirectUrl:', redirectUrl);
-
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: redirectUrl,
-                    skipBrowserRedirect: true, // We must handle the redirect manually in React Native
-                },
-            });
-
-            if (error) {
-                console.log('[3] Supabase signInWithOAuth error:', error);
-                throw error;
-            }
-
-            console.log('[3] Supabase returned Auth URL:', data?.url);
-
-            if (data?.url) {
-                console.log('[4] Opening WebBrowser with redirect (Native):', redirectUrl);
-
-                // Add a one-time listener to catch the redirect early, before Expo Router tries to mount a fake screen
-                const authSubscription = Linking.addEventListener('url', async (event) => {
-                    if (event.url.includes('access_token')) {
-                        console.log('[4] Caught OAuth Deep Link manually:', event.url);
-                        await createSessionFromUrl(event.url);
-                        // Close the browser automatically if it's still open
-                        if (Platform.OS !== 'ios') {
-                            WebBrowser.dismissBrowser();
-                        }
-                    }
-                });
-
-                // Start the browser session natively using expo-auth-session
-                const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-
-                console.log('[5] WebBrowser promise returned:', res);
-                if (res.type === 'success' && res.url) {
-                    console.log('[6] Success from WebBrowser Promise! Parsing URL:', res.url);
-                    await createSessionFromUrl(res.url);
-                }
-
-                // Cleanup
-                authSubscription.remove();
-
-            } else {
-                console.log('[3] No data.url returned from Supabase.');
-            }
-
         } catch (err: any) {
             console.error('[Error] Google Login error:', err.message);
             setAlertConfig({
@@ -211,7 +123,6 @@ export default function LoginScreen() {
             });
         } finally {
             setLoading(false);
-            console.log('--- END GOOGLE OAUTH ---');
         }
     };
 
@@ -220,7 +131,10 @@ export default function LoginScreen() {
         const handleDeepLink = async (event: Linking.EventType) => {
             if (!event.url) return;
             try {
-                await createSessionFromUrl(event.url);
+                // Ignore standard expo dev client loads, only process auth links
+                if (event.url.includes('access_token') || event.url.includes('code=')) {
+                    await AuthSDK.createSessionFromUrl(event.url);
+                }
             } catch (err) {
                 console.log('Error catching deep link initial session:', err);
             }

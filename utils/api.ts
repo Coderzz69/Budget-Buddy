@@ -1,17 +1,29 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL;
+// API URL configuration with intelligent fallback for different environments
+const getApiUrl = (): string => {
+    // Use environment variable if set (production or configured)
+    if (process.env.EXPO_PUBLIC_API_URL) {
+        return process.env.EXPO_PUBLIC_API_URL;
+    }
+    
+    // Default development URLs based on platform
+    // Note: For testing on physical devices or different networks, use .env.local
+    if (Platform.OS === 'android') {
+        return 'http://10.0.2.2:3000'; // Android emulator bridge IP
+    }
+    
+    return 'http://localhost:3000'; // iOS simulator and web
+};
 
-if (!API_URL) {
-    throw new Error('Missing API URL. Please set EXPO_PUBLIC_API_URL in your .env or EAS secrets.');
-}
+const API_URL = getApiUrl();
 
 class ApiClient {
     private baseURL: string;
 
     constructor() {
-        this.baseURL = API_URL as string;
+        this.baseURL = (API_URL as string).replace(/\/+$/, '');
     }
 
     async getToken() {
