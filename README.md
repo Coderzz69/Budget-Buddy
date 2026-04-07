@@ -46,14 +46,17 @@ Before you begin, ensure you have the following installed:
 ## ⚙️ Configuration
 
 1.  Create a `.env` file in the root directory.
-2.  Add your Clerk Publishable Key and API URL (optional):
+2.  Add your Clerk Publishable Key and API URL:
 
     ```env
     EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-    EXPO_PUBLIC_API_URL=https://ba-6696c75cc6d44a1683979f86653da53a.ecs.ap-south-1.on.aws
+    EXPO_PUBLIC_API_URL=http://localhost:3000
+    # Optional if your backend expects a custom Clerk JWT template
+    # EXPO_PUBLIC_CLERK_JWT_TEMPLATE=your_jwt_template
     ```
 
     > **Note:** You can find your Clerk Publishable Key in your [Clerk Dashboard](https://dashboard.clerk.com/).
+    > For local development, point `EXPO_PUBLIC_API_URL` to the backend that connects to your Dockerized Postgres instance (for Android emulator use `http://10.0.2.2:3000`).
 
 ## 🏃‍♂️ Running the App
 
