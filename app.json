@@ -4,23 +4,22 @@
     "slug": "Budget-Buddy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo-inr.jpg",
+    "icon": "./assets/images/icon.png",
     "scheme": "budgetbuddy",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anujdangi.BudgetBuddy"
+      "supportsTablet": true
     },
     "android": {
-      "icon": "./assets/images/logo-inr.jpg",
       "adaptiveIcon": {
-        "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/logo-inr.jpg"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.anujdangi.BudgetBuddy"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
@@ -40,26 +39,18 @@
           }
         }
       ],
-      "expo-web-browser",
+      "@clerk/expo",
       "expo-secure-store",
-      "expo-font"
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps._some_id_here_"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "6c9ce724-32f8-44d2-aba3-caa6a290cb73"
-      }
-    },
-    "owner": "anuj-dangi",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/6c9ce724-32f8-44d2-aba3-caa6a290cb73"
     }
   }
 }
