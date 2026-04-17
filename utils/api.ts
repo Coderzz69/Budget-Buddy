@@ -114,8 +114,27 @@ class ApiClient {
 
 export const api = new ApiClient();
 
+export type SyncUserPayload = {
+    clerkId: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    name?: string;
+    currency?: string;
+};
+
 // Sync user to database after authentication
-export const syncUser = async (token: string, userData: { email?: string; firstName?: string; lastName?: string; username?: string; currency?: string } = {}) => {
+export const syncUser = async (token: string, userData: SyncUserPayload) => {
     await api.setToken(token);
-    return api.post('/auth/sync', userData);
+
+    const nameParts = [userData.firstName, userData.lastName].filter(Boolean);
+    const payload = {
+        clerkId: userData.clerkId,
+        email: userData.email,
+        currency: userData.currency,
+        name: userData.name || nameParts.join(' ').trim() || userData.username || undefined,
+    };
+
+    return api.post('/auth/sync-user/', payload);
 };

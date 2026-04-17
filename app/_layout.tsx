@@ -36,7 +36,8 @@ function InitialLayout() {
     if (!isLoaded) return;
     if (!rootNavigationState?.key) return;
 
-    const inTabsGroup = segments[0] === '(tabs)';
+    const tabRoutes = new Set(['dashboard', 'transactions', 'add', 'budget', 'profile']);
+    const inTabsGroup = tabRoutes.has(segments[0] ?? '');
 
     // If we're authenticated and not in the (tabs) group, we should be redirected there
     // This handles the case where a user logs in (or signs up) and needs to be moved to the dashboard
@@ -60,6 +61,7 @@ function InitialLayout() {
           const token = await getToken();
           if (token) {
             await syncUser(token, {
+              clerkId: user.id,
               email: user.primaryEmailAddress?.emailAddress,
               firstName: user.firstName || undefined,
               lastName: user.lastName || undefined,

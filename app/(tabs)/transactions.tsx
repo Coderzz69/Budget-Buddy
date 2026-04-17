@@ -121,7 +121,7 @@ export default function TransactionsScreen() {
                             <TouchableOpacity onPress={() => {
                                 // Need to cast params to any to avoid type error if routes not fully typed
                                 const params: any = { id: item.id };
-                                router.push({ pathname: '/(tabs)/add', params });
+                                router.push({ pathname: '/add', params });
                             }}>
                                 <IconSymbol name="pencil" size={16} color={theme.text} style={{ opacity: 0.6 }} />
                             </TouchableOpacity>

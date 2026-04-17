@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CustomAlert from '../components/CustomAlert';
-import { syncUser } from '../utils/api';
 
 export default function CompleteProfileScreen() {
     const router = useRouter();
@@ -58,12 +57,6 @@ export default function CompleteProfileScreen() {
             // Should be complete now usually, unless more steps needed
             if (signUp.status === 'complete') {
                 await setActive({ session: signUp.createdSessionId });
-
-                // Sync to backend
-                const email = signUp.emailAddress || ''; // Should be populated from Google
-                syncUser(signUp.createdSessionId!, { email, firstName, lastName, username }).catch(err => {
-                    console.error('Background sync failed:', err);
-                });
 
                 router.replace('/dashboard');
             } else {
