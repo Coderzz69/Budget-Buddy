@@ -91,6 +91,8 @@ function NavigationGuard() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inHomeGroup = segments[0] === '(home)';
+    const tabRoutes = new Set(['dashboard', 'transactions', 'add', 'budget', 'profile']);
+    const inTabsGroup = tabRoutes.has(segments[0] ?? '');
 
     if (isSignedIn && inAuthGroup) {
       router.replace('/(home)');
