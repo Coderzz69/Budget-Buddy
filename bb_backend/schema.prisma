@@ -1,0 +1,85 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "sync"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  clerkId     String   @unique
+  email       String   @unique
+  name        String?
+  phoneNumber String?
+  profilePic  String?
+  currency    String   @default("INR")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  name      String
+  type      String
+  balance   Float
+  createdAt DateTime @default(now())
+
+  transactions Transaction[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  name      String
+  icon      String?
+  color     String?
+  createdAt DateTime @default(now())
+
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  account    Account  @relation(fields: [accountId], references: [id])
+  accountId  String
+  category   Category? @relation(fields: [categoryId], references: [id])
+  categoryId String?
+  type       String   // "income" or "expense"
+  amount     Float
+  note       String?
+  occurredAt DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([occurredAt])
+  @@index([accountId])
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+  month      DateTime
+  limit      Float
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, categoryId, month])
+}

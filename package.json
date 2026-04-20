@@ -16,7 +16,6 @@
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
-    "@react-navigation/native": "^7.1.8",
     "@shopify/react-native-skia": "2.2.12",
     "axios": "^1.14.0",
     "clsx": "^2.1.1",
@@ -58,6 +57,9 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
+  },
+  "peerDependencies": {
+    "@react-navigation/native": "^7.1.8"
   },
   "private": true
 }
