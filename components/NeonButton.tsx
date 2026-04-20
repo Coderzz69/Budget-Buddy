@@ -64,7 +64,7 @@ export function NeonButton({
       onPress={handlePress}
       disabled={disabled || isLoading}
       className={cn(
-        'rounded-2xl items-center justify-center flex-row',
+        'rounded-2xl items-center justify-center flex-row transition-all duration-200',
         variants[variant],
         sizes[size],
         (disabled || isLoading) && 'opacity-50',

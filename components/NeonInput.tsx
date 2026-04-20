@@ -36,7 +36,7 @@ export function NeonInput({
       )}
       <View
         className={cn(
-          'flex-row items-center rounded-2xl border bg-slate-900/50 px-4 h-14',
+          'flex-row items-center rounded-2xl border bg-slate-900/50 px-4 h-14 transition-all duration-200',
           isFocused ? 'border-primary shadow-[0_0_8px_rgba(16,185,129,0.2)]' : 'border-slate-800',
           error && 'border-error',
           className

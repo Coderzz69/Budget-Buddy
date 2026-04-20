@@ -46,27 +46,54 @@ export default function RootLayout() {
 }
 
 function AppContent() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={colorScheme === 'dark'
+          ? ['#0f0c29', '#302b63', '#24243e'] 
+          : ['#E0F2FE', '#F0F9FF', '#FFF7ED']
+        }
+        style={styles.background}
+      />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: 'transparent' },
+          animation: 'fade',
+        }}
+      >
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(home)" />
+        <Stack.Screen name="transactions/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="accounts/index" />
+        <Stack.Screen name="accounts/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="categories/index" />
+        <Stack.Screen name="categories/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="budgets/add" options={{ presentation: 'modal' }} />
+      </Stack>
+      <NavigationGuard />
+      <StatusBar style="light" />
+    </View>
+  );
+}
+
+function NavigationGuard() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const segments = useSegments();
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
-  const colorScheme = useColorScheme();
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!rootNavigationState?.key) return;
+    if (!isLoaded || !rootNavigationState?.key) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inTabsGroup = segments[0] === '(tabs)';
     const inHomeGroup = segments[0] === '(home)';
 
-    // Redirect logic: If signed in and in auth group, go home. 
-    // If not signed in and in a protected group, go login.
     if (isSignedIn && inAuthGroup) {
       router.replace('/(home)');
-    } else if (!isSignedIn && (inTabsGroup || inHomeGroup)) {
-      // router.replace('/login'); // We can enable this once login path is stable
     }
   }, [isSignedIn, isLoaded, segments, rootNavigationState?.key]);
 
@@ -93,37 +120,7 @@ function AppContent() {
     }
   }, [isSignedIn, user]);
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <View style={styles.container}>
-        <LinearGradient
-          colors={colorScheme === 'dark'
-            ? ['#0f0c29', '#302b63', '#24243e'] 
-            : ['#E0F2FE', '#F0F9FF', '#FFF7ED']
-          }
-          style={styles.background}
-        />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: 'transparent' },
-            animation: 'fade',
-          }}
-        >
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(home)" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="transactions/add" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="accounts/index" />
-          <Stack.Screen name="accounts/add" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="categories/index" />
-          <Stack.Screen name="categories/add" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="budgets/add" options={{ presentation: 'modal' }} />
-        </Stack>
-      </View>
-      <StatusBar style="light" />
-    </ThemeProvider>
-  );
+  return null;
 }
 
 const styles = StyleSheet.create({
