@@ -1,0 +1,63 @@
+env: load .env
+env: export EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY EXPO_PUBLIC_API_URL
+Starting project at /home/sanathcoonani/Desktop/Budget_Buddy_app/Budget-Buddy
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+React Compiler enabled
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules/expo-router/entry.js ▓▓░░░░░░░░░░░░░░ 16.0% (20/52)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓░░░░░░░░░░░ 32.8% (249/435)
+| ✅ Clerk iOS plugin loaded
+| ✅ Clerk Android plugin loaded
+Web node_modules/expo-router/entry.js ▓▓▓░░░░░░░░░░░░░ 23.1% (187/389)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.8% ( 522/2323)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 49.2% (393/889)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 69.8% (1153/2438)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 49.2% ( 515/2354)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.9% (2415/2637)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 81.6% (2203/2439)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.9% (2415/2637)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.1% (2515/2749)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.9% (2870/3187)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.1% (2897/3188)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.9% (3228/3493)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.1% (3239/3493)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 92.5% (3655/3801)
+λ Bundling failed 31232ms node_modules/expo-router/node/render.js (3913 modules)
+
+Metro error: SyntaxError: /home/sanathcoonani/Desktop/Budget_Buddy_app/Budget-Buddy/app/_layout.tsx: Unexpected token (12:0)
+
+[0m [90m 10 |[39m [36mimport[39m [32m'../global.css'[39m
+ [90m 11 |[39m
+[31m[1m>[22m[39m[90m 12 |[39m [33m<<[39m[33m<<[39m[33m<<[39m[33m<[39m [33mHEAD[39m
+ [90m    |[39m [31m[1m^[22m[39m
+ [90m 13 |[39m [36mconst[39m publishableKey [33m=[39m process[33m.[39menv[33m.[39m[33mEXPO_PUBLIC_CLERK_PUBLISHABLE_KEY[39m [33m||[39m [32m''[39m[33m;[39m
+ [90m 14 |[39m [33m===[39m[33m===[39m[33m=[39m
+ [90m 15 |[39m [36mimport[39m { syncUser } [36mfrom[39m [32m'@/utils/api'[39m[33m;[39m[0m
+
+Call Stack
+  <unknown> (app/_layout.tsx:12)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 97.5% (3751/3799)
+Web Bundling failed 32010ms node_modules/expo-router/entry.js (3851 modules)
+Web Bundled 3126ms node_modules/expo-router/_error.js (398 modules)
+ LOG  [web] Logs will appear in the browser console
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded

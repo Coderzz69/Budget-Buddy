@@ -16,6 +16,9 @@ export const Colors = {
     primary: '#10B981',
     secondary: '#F59E0B',
     error: '#EF4444',
+    income: '#10B981',
+    expense: '#F43F5E',
+    shadow: '#000000',
   },
   dark: {
     text: '#F1F5F9',
@@ -29,6 +32,9 @@ export const Colors = {
     primary: '#10B981',
     secondary: '#F59E0B',
     error: '#EF4444',
+    income: '#10B981',
+    expense: '#F43F5E',
+    shadow: '#000000',
   },
 };
 

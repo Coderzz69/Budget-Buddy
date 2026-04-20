@@ -1,0 +1,146 @@
+env: load .env
+env: export EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY EXPO_PUBLIC_API_URL
+Starting project at /home/sanathcoonani/Desktop/Budget_Buddy_app/Budget-Buddy
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+React Compiler enabled
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ node_modules/expo-router/node/render.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+| ✅ Clerk iOS plugin loaded
+| ✅ Clerk Android plugin loaded
+Web node_modules/expo-router/entry.js ▓▓▓▓░░░░░░░░░░░░ 30.4% (109/278)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 57.4% (537/709)
+Web node_modules/expo-router/entry.js ▓▓▓▓░░░░░░░░░░░░ 30.7% (229/413)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 59.5% (1396/2763)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓░░░░░░░░░░ 42.9% ( 476/2413)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 87.3% (2814/3012)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 77.2% (2320/2640)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.2% (2982/3279)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 88.2% (2967/3175)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.9% (3495/3728)
+λ Bundling failed 20668ms node_modules/expo-router/node/render.js (3950 modules)
+
+Metro error: Unable to resolve module @clerk/clerk-expo from /home/sanathcoonani/Desktop/Budget_Buddy_app/Budget-Buddy/app/complete-profile.tsx: @clerk/clerk-expo could not be found within the project or in these directories:
+  node_modules
+[0m[31m[1m>[22m[39m[90m 1 |[39m [36mimport[39m { useSignUp } [36mfrom[39m [32m'@clerk/clerk-expo'[39m[33m;[39m
+ [90m   |[39m                            [31m[1m^[22m[39m
+ [90m 2 |[39m [36mimport[39m { [33mLinearGradient[39m } [36mfrom[39m [32m'expo-linear-gradient'[39m[33m;[39m
+ [90m 3 |[39m [36mimport[39m { useRouter } [36mfrom[39m [32m'expo-router'[39m[33m;[39m
+ [90m 4 |[39m [36mimport[39m [33mReact[39m[33m,[39m { useEffect[33m,[39m useState } [36mfrom[39m [32m'react'[39m[33m;[39m[0m
+
+Import stack:
+
+ app/complete-profile.tsx
+ | import "@clerk/clerk-expo"
+
+ app (require.context)
+
+
+Call Stack
+  <unknown> (app/complete-profile.tsx:0)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 94.3% (3753/3865)
+Web Bundling failed 21546ms node_modules/expo-router/entry.js (3908 modules)
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+Web node_modules/expo-router/_error.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 71.7% (304/359)
+Web Bundled 2596ms node_modules/expo-router/_error.js (398 modules)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 3293ms node_modules/expo-router/node/render.js (3880 modules)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (3957/3957)
+λ  WARN  "shadow*" style props are deprecated. Use "boxShadow". 
+  factory (app/complete-profile.tsx:175:27)
+λ  WARN  [Layout children]: No route named "(tabs)" exists in nested children: [
+  'complete-profile',
+  'signup',
+  '(auth)',
+  '(home)',
+  '(tabs)/dashboard',
+  '(tabs)/transactions',
+  'accounts/add',
+  'accounts/index',
+  'budgets/add',
+  'categories/add',
+  'categories/index',
+  'transactions/add'
+] 
+Web Bundled 6927ms node_modules/expo-router/entry.js (3957 modules)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (3957/3957)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓░░░░░░░░░░ 40.9% (480/751)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 45.4% (1106/2786)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓░░░░░ 74.6% (2536/2937)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 88.5% (3438/3744)
+Web Bundled 17147ms node_modules/expo-router/entry.js (3959 modules)
+ LOG  [web] Logs will appear in the browser console
+λ Bundled 136ms node_modules/expo-router/node/render.js (1 module)
+λ  WARN  "shadow*" style props are deprecated. Use "boxShadow". 
+  factory (app/complete-profile.tsx:175:27)
+λ  WARN  [Layout children]: No route named "(tabs)" exists in nested children: [
+  'complete-profile',
+  'signup',
+  '(auth)',
+  '(home)',
+  '(tabs)/dashboard',
+  '(tabs)/transactions',
+  'accounts/add',
+  'accounts/index',
+  'budgets/add',
+  'categories/add',
+  'categories/index',
+  'transactions/add'
+] 
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 797ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 121ms node_modules/expo-router/entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 112ms node_modules/expo-router/node/render.js (1 module)
+λ  WARN  "shadow*" style props are deprecated. Use "boxShadow". 
+  factory (app/complete-profile.tsx:175:27)
+λ  WARN  [Layout children]: No route named "(tabs)" exists in nested children: [
+  'complete-profile',
+  'signup',
+  '(auth)',
+  '(home)',
+  '(tabs)/dashboard',
+  '(tabs)/transactions',
+  'accounts/add',
+  'accounts/index',
+  'budgets/add',
+  'categories/add',
+  'categories/index',
+  'transactions/add'
+] 
+Web Bundled 691ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 139ms node_modules/expo-router/entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
+Web node_modules/expo-auth-session/build/index.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web Bundled 50ms node_modules/expo-web-browser/build/WebBrowser.js (1 module)
+Web Bundled 215ms node_modules/expo-auth-session/build/index.js (90 modules)
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+λ Bundled 111ms node_modules/expo-router/node/render.js (1 module)
+λ  WARN  "shadow*" style props are deprecated. Use "boxShadow". 
+  factory (app/complete-profile.tsx:175:27)
+Web Bundled 690ms node_modules/expo-router/entry.js (1 module)
+Web Bundled 131ms node_modules/expo-router/entry.js (1 module)
+ LOG  [web] Logs will appear in the browser console
