@@ -1,0 +1,63 @@
+env: load .env
+env: export EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY EXPO_PUBLIC_API_URL
+Starting project at /home/sanathcoonani/Desktop/Budget_Buddy_app/Budget-Buddy
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+React Compiler enabled
+Starting Metro Bundler
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+✅ Clerk iOS plugin loaded
+✅ Clerk Android plugin loaded
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Web node_modules/expo-router/entry.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Web node_modules/expo-router/entry.js ▓▓░░░░░░░░░░░░░░ 16.0% ( 81/256)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓░░░░░░░░ 51.0% (375/525)
+| ✅ Clerk iOS plugin loaded
+| ✅ Clerk Android plugin loaded
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓░░░░░░░░░░ 40.1% (306/484)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓░░░░░░░ 58.5% ( 678/2588)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓░░░░░░░░░ 47.3% ( 396/2296)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 84.8% (2432/2679)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.5% (2023/2481)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 84.8% (2567/2834)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 83.9% (2645/2887)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 88.4% (2992/3282)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 89.6% (3275/3485)
+λ node_modules/expo-router/node/render.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 93.1% (3654/3787)
+λ Bundling failed 23335ms node_modules/expo-router/node/render.js (3921 modules)
+
+Metro error: Unable to resolve module @/components/ui/icon-symbol from /home/sanathcoonani/Desktop/Budget_Buddy_app/Budget-Buddy/app/(tabs)/transactions.tsx: @/components/ui/icon-symbol could not be found within the project or in these directories:
+  node_modules
+[0m [90m 1 |[39m [36mimport[39m [33mReact[39m[33m,[39m { useState[33m,[39m useCallback } [36mfrom[39m [32m'react'[39m[33m;[39m
+ [90m 2 |[39m [36mimport[39m { [33mStyleSheet[39m[33m,[39m [33mText[39m[33m,[39m [33mView[39m[33m,[39m [33mFlatList[39m[33m,[39m [33mTextInput[39m[33m,[39m [33mTouchableOpacity[39m[33m,[39m [33mRefreshControl[39m[33m,[39m [33mActivityIndicator[39m[33m,[39m [33mPlatform[39m } [36mfrom[39m [32m'react-native'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m { [33mIconSymbol[39m } [36mfrom[39m [32m'@/components/ui/icon-symbol'[39m[33m;[39m
+ [90m   |[39m                             [31m[1m^[22m[39m
+ [90m 4 |[39m [36mimport[39m { useFocusEffect[33m,[39m useRouter } [36mfrom[39m [32m'expo-router'[39m[33m;[39m
+ [90m 5 |[39m [36mimport[39m { dataService[33m,[39m [33mTransaction[39m } [36mfrom[39m [32m'../../utils/dataService'[39m[33m;[39m
+ [90m 6 |[39m [36mimport[39m { [33mColors[39m } [36mfrom[39m [32m'../../constants/theme'[39m[33m;[39m[0m
+
+Import stack:
+
+ app/(tabs)/transactions.tsx
+ | import "@/components/ui/icon-symbol"
+
+ app (require.context)
+
+
+Call Stack
+  <unknown> (app/(tabs)/transactions.tsx:0)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.1% (3841/3858)
+Web Bundling failed 23471ms node_modules/expo-router/entry.js (3863 modules)

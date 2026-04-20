@@ -1,256 +1,198 @@
-import { ThemedText } from '@/components/themed-text'
-import { ThemedView } from '@/components/themed-view'
-import { useSignIn } from '@clerk/expo'
-import { type Href, Link, useRouter } from 'expo-router'
-import React from 'react'
-import { Pressable, StyleSheet, TextInput, View } from 'react-native'
+import React from 'react';
+import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSignIn, useOAuth } from '@clerk/expo';
+import { Link, router, type Href } from 'expo-router';
+import { Mail, Lock, ArrowRight, ShieldCheck, Fingerprint } from 'lucide-react-native';
+import { NeonInput } from '../../components/NeonInput';
+import { NeonButton } from '../../components/NeonButton';
+import { GlassCard } from '../../components/GlassCard';
+import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
+import { useWarmUpBrowser } from '../../hooks/useWarmUpBrowser';
 
-export default function Page() {
-  const { signIn, errors, fetchStatus } = useSignIn()
-  const router = useRouter()
+WebBrowser.maybeCompleteAuthSession();
 
-  const [emailAddress, setEmailAddress] = React.useState('')
-  const [password, setPassword] = React.useState('')
-  const [code, setCode] = React.useState('')
+export default function SignIn() {
+  useWarmUpBrowser();
+  const { signIn, errors, fetchStatus } = useSignIn();
+  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
+
+  const [emailAddress, setEmailAddress] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [code, setCode] = React.useState('');
+  const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
 
   const handleSubmit = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const { error } = await signIn.password({
       emailAddress,
       password,
-    })
+    });
+    
     if (error) {
-      console.error(JSON.stringify(error, null, 2))
-      return
+      console.error(JSON.stringify(error, null, 2));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
     }
 
     if (signIn.status === 'complete') {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
-          // Handle session tasks
-          // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-          if (session?.currentTask) {
-            console.log(session?.currentTask)
-            return
-          }
-
-          // If no session tasks, navigate the signed-in user to the home page
-          const url = decorateUrl('/')
-          if (url.startsWith('http')) {
-            window.location.href = url
-          } else {
-            router.push(url as Href)
-          }
+          if (session?.currentTask) return;
+          const url = decorateUrl('/');
+          router.push(url as Href);
         },
-      })
-    } else if (signIn.status === 'needs_second_factor') {
-      // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
-    } else if (signIn.status === 'needs_client_trust') {
-      // For other second factor strategies,
-      // see https://clerk.com/docs/guides/development/custom-flows/authentication/client-trust
-      const emailCodeFactor = signIn.supportedSecondFactors.find(
-        (factor) => factor.strategy === 'email_code',
-      )
-
-      if (emailCodeFactor) {
-        await signIn.mfa.sendEmailCode()
-      }
-    } else {
-      // Check why the sign-in is not complete
-      console.error('Sign-in attempt not complete:', signIn)
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-  }
+  };
+
+  const onGoogleSignIn = React.useCallback(async () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setIsGoogleLoading(true);
+      const { createdSessionId, setActive } = await startOAuthFlow();
+
+      if (createdSessionId) {
+        setActive!({ session: createdSessionId });
+        router.replace('/');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (err) {
+      console.error('OAuth error', err);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  }, [router, startOAuthFlow]);
 
   const handleVerify = async () => {
-    await signIn.mfa.verifyEmailCode({ code })
-
+    await signIn.mfa.verifyEmailCode({ code });
     if (signIn.status === 'complete') {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
-          // Handle session tasks
-          // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-          if (session?.currentTask) {
-            console.log(session?.currentTask)
-            return
-          }
-
-          // If no session tasks, navigate the signed-in user to the home page
-          const url = decorateUrl('/')
-          if (url.startsWith('http')) {
-            window.location.href = url
-          } else {
-            router.push(url as Href)
-          }
+          if (session?.currentTask) return;
+          const url = decorateUrl('/');
+          router.push(url as Href);
         },
-      })
-    } else {
-      // Check why the sign-in is not complete
-      console.error('Sign-in attempt not complete:', signIn)
+      });
     }
-  }
+  };
 
   if (signIn.status === 'needs_client_trust') {
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText type="title" style={[styles.title, { fontSize: 24, fontWeight: 'bold' }]}>
-          Verify your account
-        </ThemedText>
-        <TextInput
-          style={styles.input}
-          value={code}
-          placeholder="Enter your verification code"
-          placeholderTextColor="#666666"
-          onChangeText={(code) => setCode(code)}
-          keyboardType="numeric"
-        />
-        {errors.fields.code && (
-          <ThemedText style={styles.error}>{errors.fields.code.message}</ThemedText>
-        )}
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            fetchStatus === 'fetching' && styles.buttonDisabled,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handleVerify}
-          disabled={fetchStatus === 'fetching'}
-        >
-          <ThemedText style={styles.buttonText}>Verify</ThemedText>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          onPress={() => signIn.mfa.sendEmailCode()}
-        >
-          <ThemedText style={styles.secondaryButtonText}>I need a new code</ThemedText>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
-          onPress={() => signIn.reset()}
-        >
-          <ThemedText style={styles.secondaryButtonText}>Start over</ThemedText>
-        </Pressable>
-      </ThemedView>
-    )
+      <SafeAreaView className="flex-1 bg-slate-950">
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="px-6 py-12">
+          <Text className="text-white text-3xl font-bold mb-2">Verify Account</Text>
+          <Text className="text-slate-400 mb-8">Enter the code sent to your email.</Text>
+          
+          <NeonInput
+            label="Verification Code"
+            value={code}
+            onChangeText={setCode}
+            placeholder="123456"
+            keyboardType="numeric"
+            containerClassName="mb-10"
+          />
+
+          <NeonButton 
+            title="Verify Code" 
+            onPress={handleVerify} 
+            isLoading={fetchStatus === 'fetching'}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>
-        Sign in
-      </ThemedText>
-
-      <ThemedText style={styles.label}>Email address</ThemedText>
-      <TextInput
-        style={styles.input}
-        autoCapitalize="none"
-        value={emailAddress}
-        placeholder="Enter email"
-        placeholderTextColor="#666666"
-        onChangeText={(emailAddress) => setEmailAddress(emailAddress)}
-        keyboardType="email-address"
-      />
-      {errors.fields.identifier && (
-        <ThemedText style={styles.error}>{errors.fields.identifier.message}</ThemedText>
-      )}
-      <ThemedText style={styles.label}>Password</ThemedText>
-      <TextInput
-        style={styles.input}
-        value={password}
-        placeholder="Enter password"
-        placeholderTextColor="#666666"
-        secureTextEntry={true}
-        onChangeText={(password) => setPassword(password)}
-      />
-      {errors.fields.password && (
-        <ThemedText style={styles.error}>{errors.fields.password.message}</ThemedText>
-      )}
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          (!emailAddress || !password || fetchStatus === 'fetching') && styles.buttonDisabled,
-          pressed && styles.buttonPressed,
-        ]}
-        onPress={handleSubmit}
-        disabled={!emailAddress || !password || fetchStatus === 'fetching'}
+    <SafeAreaView className="flex-1 bg-slate-950">
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
       >
-        <ThemedText style={styles.buttonText}>Continue</ThemedText>
-      </Pressable>
-      {/* For your debugging purposes. You can just console.log errors, but we put them in the UI for convenience */}
-      {errors && <ThemedText style={styles.debug}>{JSON.stringify(errors, null, 2)}</ThemedText>}
+        <ScrollView 
+          contentContainerStyle={{ flexGrow: 1 }} 
+          className="px-6 py-10"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Logo & Header */}
+          <View className="items-center mt-10 mb-12">
+            <View className="w-20 h-20 bg-primary/20 rounded-3xl items-center justify-center border border-primary/50 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              <ShieldCheck size={40} color="#10B981" />
+            </View>
+            <Text className="text-white text-3xl font-bold mt-6 tracking-tight">Welcome Back</Text>
+            <Text className="text-slate-400 mt-2 text-center">Your financial vault is waiting.</Text>
+          </View>
 
-      <View style={styles.linkContainer}>
-        <ThemedText>Don't have an account? </ThemedText>
-        <Link href="/sign-up">
-          <ThemedText type="link">Sign up</ThemedText>
-        </Link>
-      </View>
-    </ThemedView>
-  )
+          {/* Form */}
+          <GlassCard className="p-8 gap-6 border-slate-900/50 bg-slate-900/10">
+            <NeonInput
+              label="Email Address"
+              value={emailAddress}
+              onChangeText={setEmailAddress}
+              placeholder="name@example.com"
+              keyboardType="email-address"
+              leftIcon={<Mail size={18} color="#475569" />}
+              error={errors.fields.identifier?.message}
+            />
+
+            <NeonInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              leftIcon={<Lock size={18} color="#475569" />}
+              error={errors.fields.password?.message}
+            />
+
+            <Pressable className="self-end -mt-2">
+              <Text className="text-secondary font-medium">Forgot Password?</Text>
+            </Pressable>
+
+            <NeonButton
+              title="Enter your vault"
+              onPress={handleSubmit}
+              className="mt-4 h-16"
+              isLoading={fetchStatus === 'fetching'}
+              disabled={!emailAddress || !password}
+              rightIcon={<ArrowRight size={20} color="#000" />}
+            />
+
+            <View className="flex-row items-center gap-4 my-2">
+              <View className="flex-1 h-[1px] bg-slate-800" />
+              <Text className="text-slate-500 font-medium text-xs">OR CONTINUE WITH</Text>
+              <View className="flex-1 h-[1px] bg-slate-800" />
+            </View>
+
+            <Pressable 
+              onPress={onGoogleSignIn}
+              disabled={isGoogleLoading}
+              className="active:opacity-70"
+            >
+              <GlassCard className="flex-row items-center justify-center gap-3 py-4 border-slate-800/50">
+                <Image 
+                  source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2991/2991148.png' }} 
+                  className="w-5 h-5"
+                />
+                <Text className="text-white font-semibold">Google</Text>
+              </GlassCard>
+            </Pressable>
+          </GlassCard>
+
+          {/* Footer */}
+          <View className="flex-row justify-center mt-12 mb-10">
+            <Text className="text-slate-400">Don't have an account? </Text>
+            <Link href="/sign-up" asChild>
+              <Pressable>
+                <Text className="text-primary font-bold">Create Vault</Text>
+              </Pressable>
+            </Link>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    gap: 12,
-  },
-  title: {
-    marginBottom: 8,
-  },
-  label: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#0a7ea4',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  secondaryButtonText: {
-    color: '#0a7ea4',
-    fontWeight: '600',
-  },
-  linkContainer: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 12,
-    alignItems: 'center',
-  },
-  error: {
-    color: '#d32f2f',
-    fontSize: 12,
-    marginTop: -8,
-  },
-  debug: {
-    fontSize: 10,
-    opacity: 0.5,
-    marginTop: 8,
-  },
-})

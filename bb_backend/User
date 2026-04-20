@@ -1,0 +1,23 @@
+/exit
+/exit
+exit
+\q
+\dt
+\q
+\dt
+\l
+\c budgetbuddy
+\dt
+\l
+\dt
+\q
+\st
+\dt
+\;
+\l
+\dt
+\c budgetbuddy
+\l
+\dt
+\dt User
+\s User

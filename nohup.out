@@ -1,0 +1,122 @@
+INFO         | Android emulator version 36.5.10.0 (build_id 15081367) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+INFO         | Found systemPath /home/sanathcoonani/Android/Sdk/system-images/android-35/google_apis/x86_64/
+INFO         | Increasing RAM size to 2048MB
+INFO         | Guest GLES Driver: Auto (ext controls)
+WARNING      | Your GPU drivers may have a bug. Switching to software rendering.
+INFO         | emuglConfig_init: vulkan_mode_selected:lavapipe gles_mode_selected:swangle
+INFO         | Checking system compatibility:
+INFO         |   Checking: hasSufficientDiskSpace
+INFO         |      Ok: Disk space requirements to run avd: `bb_api35_x86_64` are met
+INFO         |   Checking: hasSufficientHwGpu
+INFO         |      Ok: Hardware GPU compatibility checks are not required
+INFO         |   Checking: hasSufficientSystem
+INFO         |      Ok: System requirements to run avd: `bb_api35_x86_64` are met
+WARNING      | Failed to process .ini file /home/sanathcoonani/Desktop/Budget_Buddy_app/.android/.android/avd/../avd/bb_api35_x86_64.avd/quickbootChoice.ini for reading.
+INFO         | Warning: Could not find the Qt platform plugin "wayland" in "/home/sanathcoonani/Android/Sdk/emulator/lib64/qt/plugins" (:0, )
+INFO         | Storing crashdata in: /tmp/android-sanathcoonani/emu-crash-36.5.10.db, detection is enabled for process: 482513
+INFO         | Initializing gfxstream backend
+INFO         | android_startOpenglesRenderer: gpu info
+INFO         | 
+INFO         | initIcdPaths: ICD set to 'lavapipe', using Lavapipe ICD
+INFO         | Setting ICD filenames for the loader = /home/sanathcoonani/Android/Sdk/emulator/lib64/vulkan/lvp_icd.json
+INFO         | SharedLibrary::open for [/home/sanathcoonani/Android/Sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so]
+INFO         | SharedLibrary::open for [/home/sanathcoonani/Android/Sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so.1]
+INFO         | SharedLibrary::open for [/home/sanathcoonani/Android/Sdk/emulator/lib64/vulkan/libvulkan.so]
+INFO         | Added library: /home/sanathcoonani/Android/Sdk/emulator/lib64/vulkan/libvulkan.so
+INFO         | Selecting Vulkan device: llvmpipe (LLVM 21.0.0, 256 bits), Version: 1.4.318
+INFO         | SharedLibrary::open for [libX11]
+INFO         | SharedLibrary::open for [libX11-xcb]
+WARNING      | Could not open libX11-xcb.so, try libX11-xcb.so.1
+INFO         | SharedLibrary::open for [libX11-xcb.so.1]
+INFO         | Initializing VkEmulation features:
+INFO         |     glInteropSupported: false
+INFO         |     useDeferredCommands: true
+INFO         |     createResourceWithRequirements: true
+INFO         |     useVulkanComposition: false
+INFO         |     useVulkanNativeSwapchain: false
+INFO         |     enable guestRenderDoc: false
+INFO         |     ASTC LDR emulation mode: Gpu
+INFO         |     enable ETC2 emulation: true
+INFO         |     enable Ycbcr emulation: false
+INFO         |     guestVulkanOnly: false
+INFO         |     useDedicatedAllocations: false
+INFO         |     guestVulkanMaxApiVersion: 1.3.0
+INFO         | Graphics Adapter Vendor Google (Google Inc.)
+INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (Google SwiftShader)
+INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+INFO         | Graphics API Extensions GL_OES_EGL_sync GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_depth24 GL_OES_depth32 GL_OES_element_index_uint GL_OES_texture_float GL_OES_texture_float_linear GL_OES_compressed_paletted_texture GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth_texture GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_packed_depth_stencil GL_OES_vertex_half_float GL_OES_standard_derivatives GL_OES_texture_npot GL_OES_rgb8_rgba8 GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_texture_format_BGRA8888 GL_APPLE_texture_format_BGRA8888 
+INFO         | Graphics Device Extensions N/A
+INFO         | Disabling sparse binding feature support
+ERROR        | Setting read-only feature 'GLAsyncSwap' to '0'
+INFO         | Feature 'GLAsyncSwap' (50) is overridden to 'disabled'
+INFO         | Sending adb public key [QAAAAPMleuXFBDOLocwgscE9UiHSC1NThNcWxXKvpUwSRVMyqefTpBsKTdLCxb9ESHQ7fkQZ3BeK360RWJV0PbzUCEWXWivTquDLpP2xqZt8EkC0PBeKoV5A38yuyCVH83Fs6YsSDnS3mIoEmZ3GRg+u5leeS6nXYdhAaOi/Qss4q2JHJK6VNvomdSf6SlAZAx4tCVCJsPGkrM7xE4SkxxpCnpgq9TRx5a0CRZY9GK66+VWsktA7WCH01dVrEuKUUH1RE7fqGtcr7AsDc9OZIOzslHXWC7T+olCHXYDHC7vszimoY+quHwsdnm9qDa5XlkhQt+2dCGeExj12mTQPbETiA5D769HjNk//RA+Cgdeb8NuT+JXcBrZ4vRKpK5h6jVW+HGlvPkVl14RYFjY/Txi9mF7QhVd0ztpcWMFo3ebVi8YdoskCrKhVyttACQSXjRz51tYxTb392R5saXg9vhGds98jugf/ul4MC7X2hknTgMlcuYEl+2icD3VSroMedoBLGtCSBNF5dhLNxOfmCywPZADtSyOOXZhXtl6FveqJ3GBc3RdWo/GpVPVU3TvLoRmGffDzH4c669prnBHShuhxawtMuaANz1nJ6fs6DofyOfDDO5oywikhnCll6+rhZRF66s7Iysh9skSPa77gDZQrzxwqdtAI19WXRNEJUe0qMB7EIp3/qAEAAQA= sanathcoonani@unknown]
+INFO         | Userspace boot properties:
+INFO         |   androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:06.0
+INFO         |   androidboot.dalvik.vm.heapsize=512m
+INFO         |   androidboot.debug.hwui.renderer=skiagl
+INFO         |   androidboot.debug.sf.nobootanimation=1
+INFO         |   androidboot.hardware=ranchu
+INFO         |   androidboot.hardware.gltransport=pipe
+INFO         |   androidboot.hardware.vulkan=ranchu
+INFO         |   androidboot.logcat=*:V
+INFO         |   androidboot.opengles.version=196608
+INFO         |   androidboot.qemu=1
+INFO         |   androidboot.qemu.adb.pubkey=QAAAAPMleuXFBDOLocwgscE9UiHSC1NThNcWxXKvpUwSRVMyqefTpBsKTdLCxb9ESHQ7fkQZ3BeK360RWJV0PbzUCEWXWivTquDLpP2xqZt8EkC0PBeKoV5A38yuyCVH83Fs6YsSDnS3mIoEmZ3GRg+u5leeS6nXYdhAaOi/Qss4q2JHJK6VNvomdSf6SlAZAx4tCVCJsPGkrM7xE4SkxxpCnpgq9TRx5a0CRZY9GK66+VWsktA7WCH01dVrEuKUUH1RE7fqGtcr7AsDc9OZIOzslHXWC7T+olCHXYDHC7vszimoY+quHwsdnm9qDa5XlkhQt+2dCGeExj12mTQPbETiA5D769HjNk//RA+Cgdeb8NuT+JXcBrZ4vRKpK5h6jVW+HGlvPkVl14RYFjY/Txi9mF7QhVd0ztpcWMFo3ebVi8YdoskCrKhVyttACQSXjRz51tYxTb392R5saXg9vhGds98jugf/ul4MC7X2hknTgMlcuYEl+2icD3VSroMedoBLGtCSBNF5dhLNxOfmCywPZADtSyOOXZhXtl6FveqJ3GBc3RdWo/GpVPVU3TvLoRmGffDzH4c669prnBHShuhxawtMuaANz1nJ6fs6DofyOfDDO5oywikhnCll6+rhZRF66s7Iysh9skSPa77gDZQrzxwqdtAI19WXRNEJUe0qMB7EIp3/qAEAAQA= sanathcoonani@unknown
+INFO         |   androidboot.qemu.avd_name=bb_api35_x86_64
+INFO         |   androidboot.qemu.camera_hq_edge_processing=0
+INFO         |   androidboot.qemu.camera_protocol_ver=1
+INFO         |   androidboot.qemu.cpuvulkan.version=4202496
+INFO         |   androidboot.qemu.gltransport.drawFlushInterval=800
+INFO         |   androidboot.qemu.gltransport.name=pipe
+INFO         |   androidboot.qemu.hwcodec.avcdec=2
+INFO         |   androidboot.qemu.hwcodec.hevcdec=2
+INFO         |   androidboot.qemu.hwcodec.vpxdec=2
+INFO         |   androidboot.qemu.settings.system.screen_off_timeout=2147483647
+INFO         |   androidboot.qemu.skin=1080x2400
+INFO         |   androidboot.qemu.virtiowifi=1
+INFO         |   androidboot.qemu.vsync=60
+INFO         |   androidboot.serialno=EMULATOR36X5X10X0
+INFO         |   androidboot.vbmeta.digest=b3271ba499104f4631ae3723913d5c12574e01715fce5b82d60beed097ead264
+INFO         |   androidboot.vbmeta.hash_alg=sha256
+INFO         |   androidboot.vbmeta.size=6720
+INFO         |   androidboot.veritymode=enforcing
+INFO         | Monitoring duration of emulator setup.
+WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
+INFO         | Using security allow list from: /home/sanathcoonani/Android/Sdk/emulator/lib/emulator_access.json
+WARNING      | *** Basic token auth should only be used by android-studio ***
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1000/avd/running/482513/jwks/de3a3064-52a7-437d-a6a5-345e3af798dd/active.jwk
+INFO         | Scanning /run/user/1000/avd/running/482513/jwks/de3a3064-52a7-437d-a6a5-345e3af798dd for jwk keys.
+INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
+INFO         | Advertising in: /run/user/1000/avd/running/pid_482513.ini
+INFO         | Successfully initialized netsim WiFi
+INFO         | Activated packet streamer for bluetooth emulation
+INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420 
+INFO         | setDisplayActiveConfig: id:0, 1080x2400
+INFO         | emulatorSetupEnvironment: Setting up screen background view and display layout at env:1080x2400, lcd:1080x2400
+INFO         | emulatorSetupEnvironment: Environment scene is not required
+INFO         | Checking system compatibility:
+INFO         |   Checking: hasSufficientDiskSpace
+INFO         |      Ok: Disk space requirements to run avd: `bb_api35_x86_64` are met
+INFO         |   Checking: hasSufficientHwGpu
+INFO         |      Ok: Hardware GPU compatibility checks are not required
+INFO         |   Checking: hasSufficientSystem
+INFO         |      Ok: System requirements to run avd: `bb_api35_x86_64` are met
+USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
+WARNING      | Failed to process .ini file /home/sanathcoonani/.android/emu-update-last-check.ini for reading.
+INFO         | Warning: QMetaObject::connectSlotsByName: No matching signal for on_rgbcSensorValueWidget_valueChanged() (:0, )
+INFO         | Warning: QMetaObject::connectSlotsByName: No matching signal for on_posture_valueChanged(int) (:0, )
+INFO         | Warning: QObject::connect: Cannot queue arguments of type 'std::vector<android::emulation::control::SnapshotInfo>'
+(Make sure 'std::vector<android::emulation::control::SnapshotInfo>' is registered using qRegisterMetaType().) (:0, )
+INFO         | AVD supportsNativeGLES=1, supportsGuestAngle=1
+INFO         | Warning: QObject::connect: No such signal ToolWindow::microphoneEnabledChanged() in /buildbot/src/googleplex-android/emu-36-5-release/external/qemu/android/android-ui/modules/aemu-ui-qt/src/android/skin/qt/extended-window.cpp:160 (:0, )
+INFO         | Warning: QObject::connect:  (sender name:   'ToolControls') (:0, )
+INFO         | Warning: QObject::connect:  (receiver name: 'microphonePage') (:0, )
+INFO         | Warning: QObject::connect: No such signal MicrophonePage::microphoneEnabledChanged() in /buildbot/src/googleplex-android/emu-36-5-release/external/qemu/android/android-ui/modules/aemu-ui-qt/src/android/skin/qt/extended-window.cpp:162 (:0, )
+INFO         | Warning: QObject::connect:  (sender name:   'microphonePage') (:0, )
+INFO         | Warning: QObject::connect:  (receiver name: 'ToolControls') (:0, )
+INFO         | Created extended window in 592.747ms
+WARNING      | Failed to process .ini file /home/sanathcoonani/.android/emu-update-last-check.ini for reading.
+WARNING      | Netsim Wifi localhost:36099 is gone due to CANCELLED
+XIO:  fatal IO error 2 (No such file or directory) on X server ":1"
+      after 59 requests (59 known processed) with 0 events remaining.
