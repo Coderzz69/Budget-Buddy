@@ -103,13 +103,7 @@ def build_database_config():
                 'CONN_MAX_AGE': 60,
             }
 
-    return {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'budget_buddy.db',
-        'OPTIONS': {
-            'timeout': 20,
-        },
-    }
+    raise ValueError("DATABASE_URL environment variable is required and must be a PostgreSQL URL.")
 
 
 DATABASES = {
