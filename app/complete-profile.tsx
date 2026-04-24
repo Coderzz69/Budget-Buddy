@@ -1,4 +1,6 @@
-import { useSignUp } from '@clerk/expo';
+import { useSignUp, useAuth } from '@clerk/expo';
+import * as DocumentPicker from 'expo-document-picker';
+import { api, syncUser } from '@/utils/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -18,12 +20,15 @@ import CustomAlert from '@/components/CustomAlert';
 
 export default function CompleteProfileScreen() {
     const router = useRouter();
+    // @ts-ignore
     const { signUp, setActive, isLoaded } = useSignUp();
 
     const [username, setUsername] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [statementFile, setStatementFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
     const [loading, setLoading] = useState(false);
+    const { getToken } = useAuth();
     const [alertConfig, setAlertConfig] = useState<{ visible: boolean; title: string; message: string }>({
         visible: false,
         title: '',
@@ -36,6 +41,21 @@ export default function CompleteProfileScreen() {
             setLastName(signUp.lastName || '');
         }
     }, [isLoaded, signUp]);
+
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: ['text/csv', 'text/comma-separated-values', 'application/csv'],
+                copyToCacheDirectory: true,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                setStatementFile(result.assets[0]);
+            }
+        } catch (err) {
+            console.error('Error picking document:', err);
+        }
+    };
 
     const onCompleteProfilePress = async () => {
         if (!username || !firstName || !lastName) {
@@ -57,6 +77,40 @@ export default function CompleteProfileScreen() {
             // Should be complete now usually, unless more steps needed
             if (signUp.status === 'complete') {
                 await setActive({ session: signUp.createdSessionId });
+
+                // Session is now active. Fetch the token to sync the user right away
+                const token = await getToken({ template: 'budget-buddy' }) || await getToken();
+                if (token) {
+                    await syncUser(token, {
+                        clerkId: signUp.createdUserId!,
+                        username,
+                        firstName,
+                        lastName,
+                    });
+                    
+                    if (statementFile) {
+                        const uploadWithRetry = async (retries = 3, delay = 1000) => {
+                            try {
+                                const formData = new FormData();
+                                formData.append('file', {
+                                    uri: statementFile.uri,
+                                    name: statementFile.name,
+                                    type: statementFile.mimeType || 'text/csv',
+                                } as any);
+                                await api.uploadFile('/ml/upload-statement/', formData);
+                                console.log('File uploaded successfully');
+                            } catch (error) {
+                                if (retries > 0) {
+                                    console.warn(`Upload failed, retrying in ${delay}ms... (${retries} retries left)`);
+                                    await new Promise(res => setTimeout(res, delay));
+                                    return uploadWithRetry(retries - 1, delay * 2);
+                                }
+                                console.error('Upload failed after max retries:', error);
+                            }
+                        };
+                        uploadWithRetry();
+                    }
+                }
 
                 router.replace('/dashboard');
             } else {
@@ -139,6 +193,24 @@ export default function CompleteProfileScreen() {
                                 onChangeText={setLastName}
                             />
                         </View>
+                    </View>
+
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Bank Statement CSV (Optional)</Text>
+                        <TouchableOpacity
+                            style={styles.fileButton}
+                            onPress={pickDocument}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={styles.fileButtonText}>
+                                {statementFile ? statementFile.name : 'Select 6-Month CSV File'}
+                            </Text>
+                        </TouchableOpacity>
+                        {statementFile && (
+                            <Text style={styles.fileHelpText}>
+                                We'll categorize these transactions automatically.
+                            </Text>
+                        )}
                     </View>
 
                     <TouchableOpacity
@@ -246,5 +318,26 @@ const styles = StyleSheet.create({
         color: '#000',
         fontWeight: 'bold',
         fontSize: 16,
+    },
+    fileButton: {
+        backgroundColor: '#2C2C2E',
+        borderRadius: 12,
+        height: 52,
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: '#333',
+        borderStyle: 'dashed',
+    },
+    fileButtonText: {
+        color: '#F97316',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    fileHelpText: {
+        color: '#34C759',
+        fontSize: 12,
+        marginTop: 6,
+        textAlign: 'center',
     },
 });

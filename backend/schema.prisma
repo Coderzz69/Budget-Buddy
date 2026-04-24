@@ -23,6 +23,10 @@ model User {
   categories   Category[]
   transactions Transaction[]
   budgets      Budget[]
+  normalizedMerchants NormalizedMerchant[]
+  recurringPatterns   RecurringPattern[]
+  insightSnapshots    InsightSnapshot[]
+  mlTrainingRows      MLTrainingRow[]
 }
 
 model Account {
@@ -48,6 +52,7 @@ model Category {
 
   transactions Transaction[]
   budgets      Budget[]
+  normalizedMerchants NormalizedMerchant[]
 
   @@unique([userId, name])
 }
@@ -66,6 +71,8 @@ model Transaction {
   occurredAt DateTime
   createdAt  DateTime @default(now())
 
+  prediction ModelPrediction?
+
   @@index([userId])
   @@index([occurredAt])
   @@index([accountId])
@@ -82,4 +89,76 @@ model Budget {
   createdAt  DateTime @default(now())
 
   @@unique([userId, categoryId, month])
+}
+
+model NormalizedMerchant {
+  id               String   @id @default(uuid())
+  user             User?    @relation(fields: [userId], references: [id])
+  userId           String?
+  rawName          String   @unique
+  normalizedName   String
+  defaultCategory  Category? @relation(fields: [categoryId], references: [id])
+  categoryId       String?
+  confidence       Float    @default(1.0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model ModelPrediction {
+  id            String   @id @default(uuid())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId String   @unique
+  modelName     String
+  prediction    String
+  confidence    Float
+  metadata      Json?
+  createdAt     DateTime @default(now())
+}
+
+model RecurringPattern {
+  id                 String   @id @default(uuid())
+  user               User     @relation(fields: [userId], references: [id])
+  userId             String
+  merchantName       String
+  frequency          String   // "weekly", "monthly", "yearly"
+  amount             Float
+  lastOccurredAt     DateTime
+  nextExpectedAt     DateTime
+  confidence         Float
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+}
+
+model InsightSnapshot {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  kind      String   // "spend_alert", "budget_risk", "anomaly", "recurring"
+  title     String
+  body      String
+  data      Json?
+  expiresAt DateTime?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([kind])
+}
+
+model MLTrainingRow {
+  id                 String   @id @default(uuid())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  occurredAt         DateTime
+  amount             Float
+  descriptionRaw     String
+  predictedCategory  String?
+  confidence         Float?
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
 }

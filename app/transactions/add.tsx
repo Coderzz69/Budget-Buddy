@@ -21,7 +21,38 @@ export default function AddTransaction() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isListening, setIsListening] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
   const canSave = amount && !Number.isNaN(parseFloat(amount)) && selectedCategory && selectedAccount;
+
+  // ML Smart Category Prediction
+  useEffect(() => {
+    if (!note || note.length < 3) return;
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        setIsPredicting(true);
+        const parsedAmount = parseFloat(amount) || 0;
+        const res = await api.predictCategory(note, parsedAmount);
+        
+        if (res.data?.predicted_category && res.data.confidence && res.data.confidence > 0.3) {
+          const catName = res.data.predicted_category.toLowerCase();
+          const matchingCat = categories.find(c => c.name.toLowerCase() === catName);
+          
+          if (matchingCat && matchingCat.id !== selectedCategory) {
+            setSelectedCategory(matchingCat.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        }
+      } catch (e) {
+        console.warn('ML Prediction failed:', e);
+      } finally {
+        setIsPredicting(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [note, amount, categories]); // Do not include selectedCategory as an exhaust-dependency to prevent infinite loops if they don't match
+
 
   useEffect(() => {
     if (!selectedCategory && categories.length > 0) {

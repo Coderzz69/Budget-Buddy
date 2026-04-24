@@ -15,6 +15,9 @@ JWKS_CACHE_TTL = 3600
 
 
 class ClerkJWTAuthentication(BaseAuthentication):
+    def authenticate_header(self, request):
+        return 'Bearer'
+
     def get_jwks(self):
         global _jwks_cache, _jwks_cache_time
         now = time.time()

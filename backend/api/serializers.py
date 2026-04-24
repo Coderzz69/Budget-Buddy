@@ -1,5 +1,8 @@
 from rest_framework import serializers
-from .models import User, Account, Category, Transaction, Budget
+from .models import (
+    User, Account, Category, Transaction, Budget,
+    InsightSnapshot, RecurringPattern, NormalizedMerchant, ModelPrediction
+)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -120,4 +123,28 @@ class BudgetSerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         ret['id'] = str(instance.id)
         ret['categoryId'] = str(instance.category_id)
+        return ret
+
+
+class InsightSnapshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InsightSnapshot
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['id'] = str(instance.id)
+        ret['userId'] = str(instance.user_id)
+        return ret
+
+
+class RecurringPatternSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecurringPattern
+        fields = '__all__'
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['id'] = str(instance.id)
+        ret['userId'] = str(instance.user_id)
         return ret

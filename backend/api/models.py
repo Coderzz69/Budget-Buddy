@@ -17,6 +17,10 @@ class User(models.Model):
     class Meta:
         db_table = 'User'
 
+    @property
+    def is_authenticated(self):
+        return True
+
     def __str__(self):
         return f'{self.email} ({self.clerkId})'
 
@@ -152,3 +156,84 @@ class Budget(models.Model):
     @property
     def categoryId(self):
         return str(self.category_id)
+
+
+class NormalizedMerchant(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='normalized_merchants', null=True, blank=True, db_column='userId')
+    rawName = models.CharField(max_length=255, unique=True, db_column='rawName')
+    normalizedName = models.CharField(max_length=255, db_column='normalizedName')
+    defaultCategory = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='normalized_merchants', db_column='categoryId')
+    confidence = models.FloatField(default=1.0)
+    createdAt = models.DateTimeField(auto_now_add=True, db_column='createdAt')
+    updatedAt = models.DateTimeField(auto_now=True, db_column='updatedAt')
+
+    class Meta:
+        db_table = 'NormalizedMerchant'
+
+    def __str__(self):
+        return f'{self.rawName} -> {self.normalizedName}'
+
+
+class ModelPrediction(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE, related_name='prediction', db_column='transactionId')
+    modelName = models.CharField(max_length=255, db_column='modelName')
+    prediction = models.CharField(max_length=255)
+    confidence = models.FloatField()
+    metadata = models.JSONField(null=True, blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True, db_column='createdAt')
+
+    class Meta:
+        db_table = 'ModelPrediction'
+
+
+class RecurringPattern(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_patterns', db_column='userId')
+    merchantName = models.CharField(max_length=255, db_column='merchantName')
+    frequency = models.CharField(max_length=50)
+    amount = models.FloatField()
+    lastOccurredAt = models.DateTimeField(db_column='lastOccurredAt')
+    nextExpectedAt = models.DateTimeField(db_column='nextExpectedAt')
+    confidence = models.FloatField()
+    isActive = models.BooleanField(default=True, db_column='isActive')
+    createdAt = models.DateTimeField(auto_now_add=True, db_column='createdAt')
+
+    class Meta:
+        db_table = 'RecurringPattern'
+
+
+class InsightSnapshot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='insight_snapshots', db_column='userId')
+    kind = models.CharField(max_length=50)
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    data = models.JSONField(null=True, blank=True)
+    expiresAt = models.DateTimeField(null=True, blank=True, db_column='expiresAt')
+    isRead = models.BooleanField(default=False, db_column='isRead')
+    createdAt = models.DateTimeField(auto_now_add=True, db_column='createdAt')
+
+    class Meta:
+        db_table = 'InsightSnapshot'
+        indexes = [
+            models.Index(fields=['user'], name='insight_user_idx'),
+            models.Index(fields=['kind'], name='insight_kind_idx'),
+        ]
+
+class MLTrainingRow(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ml_training_rows', db_column='userId')
+    occurredAt = models.DateTimeField(db_column='occurredAt')
+    amount = models.FloatField()
+    descriptionRaw = models.TextField(db_column='descriptionRaw')
+    predictedCategory = models.CharField(max_length=255, null=True, blank=True, db_column='predictedCategory')
+    confidence = models.FloatField(null=True, blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True, db_column='createdAt')
+
+    class Meta:
+        db_table = 'MLTrainingRow'
+        indexes = [
+            models.Index(fields=['user'], name='ml_training_user_idx'),
+        ]

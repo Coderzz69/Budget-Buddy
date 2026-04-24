@@ -110,6 +110,34 @@ class ApiClient {
             method: 'DELETE',
         });
     }
+
+    async uploadFile(endpoint: string, formData: FormData, options: RequestInit = {}) {
+        const token = await this.getToken();
+        const headers: Record<string, string> = {
+            ...(options.headers as Record<string, string>),
+        };
+        if (!headers['Authorization'] && token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const url = `${this.baseURL}${endpoint}`;
+        try {
+            const response = await fetch(url, {
+                ...options,
+                method: 'POST',
+                headers,
+                body: formData,
+            });
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                if (!response.ok) throw new Error(text || `Request failed with status ${response.status}`);
+            }
+        } catch (err) {
+            throw err;
+        }
+    }
 }
 
 export const api = new ApiClient();
